@@ -1,63 +1,14 @@
-# AceSpeeder! for PSP and Linux
+# AceSpeeder! port
 
-A source port of AceSpeeder! (2000, Takahiro Nakatani / Production TN): the game
-logic is reimplemented from the original Windows executable, and the graphics,
-sound and input go through a small platform layer (SDL2 + OpenGL on Linux,
-sceGu on the PSP).
+The documentation (building, project structure, where the outputs go,
+installing on a PSP, controls) is in the [README at the repository root](../README.md).
 
-The original game files are not included. You need your own copy of the game
-folder (`AceSpeeder.exe` and its data), placed at `../game` relative to this
-directory.
+Quick reference, from this directory:
 
-## PSP
+```sh
+export PATH=$HOME/pspdev/bin:$PATH
+tools/make_dist.sh                       # PSP: dist/PSP/GAME/AceSpeeder/
 
-Requirements: the [PSP SDK](https://github.com/pspdev/pspdev) in `PATH`,
-Python 3 with Pillow, and `fluidsynth`, `vorbis-tools` and a General MIDI
-soundfont (`/usr/share/sounds/sf2/FluidR3_GM.sf2`) for the music.
-
-    tools/make_dist.sh
-
-This converts the data that needs it (the courses from the executable, the MIDI
-music to Ogg Vorbis, the menu icon), builds `EBOOT.PBP` and assembles
-`dist/PSP/GAME/AceSpeeder/`. Copy the `PSP` folder to the root of the Memory
-Stick, or the `AceSpeeder` folder into PPSSPP's `PSP/GAME`: the game needs all of
-its files, not only `EBOOT.PBP` (they may also go in a `data` folder next to it).
-If files are missing the game says which. Saves and replays go to
-`PSP/GAME/AceSpeeder/save/`.
-
-| PSP | Game |
-|---|---|
-| D-pad / analog stick | steer, move in the menus |
-| Cross | accelerate, confirm |
-| Circle | back (and pause, like the original's key) |
-| Start | pause and resume a race, confirm in the menus |
-| Triangle | change the camera view |
-| Select | show the performance meter (logic, drawing and GPU time per frame) |
-
-## Linux
-
-    cmake -S . -B build && cmake --build build
-    ACESPEEDER_DATA=data:../game build/acespeeder
-
-`ACESPEEDER_DATA` lists the data folders, separated by `:`; saves go to
-`~/.local/share/acespeeder` unless `ACESPEEDER_SAVE` says otherwise. Keys, as in
-the original: arrows, Space or Enter (accelerate / confirm), Shift (pause / back),
-F1–F4 (camera views); a gamepad works too. P pauses like the PSP's Start and F12
-shows the performance meter.
-
-`build/acespeeder <stage> <course> <machine> <mode>` starts straight in a race
-(mode 0 grand prix, 1 practice, 2 replay). For debugging, `ACESPEEDER_SHOTS`,
-`ACESPEEDER_KEYS`, `ACESPEEDER_RATE` and `ACESPEEDER_STATE` are described at the
-top of `src/main.c`.
-
-## Settings added by the port
-
-The Setting screen has a third row, FOV, which widens the race camera's field of
-view (Original, Wide, Wider, Widest; Wide by default). It is saved with the music
-and sound effect volumes in `settings.txt` next to the saves:
-
-    fov=1
-    music=100
-    sfx=60
-
-The volumes are in percent and can be edited by hand (0-200).
+cmake -S . -B build && cmake --build build
+ACESPEEDER_DATA=data:../game build/acespeeder   # Linux
+```

@@ -69,10 +69,9 @@ typedef struct {
 	uint8_t rest[0x1a00]; /* 0x5e0 render data */
 } Sparks;
 
-/* 7 machines; slot 7 is never written (zero) but the original's collision and
- * rank loops run one past the array, so a phantom machine sits at the origin. */
-#define NUM_MACHINES 7
-extern Machine g_machines[8];
+/* The player (slot 0) and seven opponents. */
+#define NUM_MACHINES 8
+extern Machine g_machines[NUM_MACHINES];
 /* Pose of the player's 3D frame, which the original sets directly on the
  * Direct3D frame from the physics code. */
 extern Vec3 g_playerFramePos;

@@ -40,3 +40,25 @@ void test_camera_shot(Camera *c, const TrackPos *p, int lap, int dir, int shot) 
 
 #include "../game/effects.h"
 void test_explosion_add(const Vec3 *p) { Explosion_Add(*p); }
+
+/* scene and music hooks of the race logic, logged for the differential tests */
+#include "../game/race.h"
+int test_hook_log[256][2];
+float test_hook_arg[256];
+int test_hook_count;
+static void log_hook(int op, int a, float f)
+{
+	if (test_hook_count < 256) {
+		test_hook_log[test_hook_count][0] = op;
+		test_hook_log[test_hook_count][1] = a;
+		test_hook_arg[test_hook_count] = f;
+		test_hook_count++;
+	}
+}
+void Race_Setup(Race *r) { (void)r; log_hook(1, 0, 0); }
+void Race_Cleanup(Race *r) { (void)r; log_hook(2, 0, 0); }
+void Doors_Open(float t) { log_hook(3, 0, t); }
+void Doors_Close(float t) { log_hook(4, 0, t); }
+void Music_Play(int id) { log_hook(5, id, 0); }
+void Music_Stop(void) { log_hook(6, 0, 0); }
+FILE *plat_open_save(const char *name, const char *mode) { (void)name; (void)mode; return NULL; }

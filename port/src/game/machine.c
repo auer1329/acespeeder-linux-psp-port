@@ -12,7 +12,7 @@
 
 #include "track.h"
 
-Machine g_machines[8];
+Machine g_machines[NUM_MACHINES];
 Vec3 g_playerFramePos;
 Mat3 g_playerFrameRot;
 Pickups g_pickups;
@@ -707,7 +707,7 @@ void Machine_BestLap(Machine *m)
 void Race_Collide(void)
 {
 	Machine *p = &g_machines[0];
-	for (int i = 1; i <= 7; i++) { /* sic: 7 is the phantom slot */
+	for (int i = 1; i < NUM_MACHINES; i++) {
 		Machine *o = &g_machines[i];
 		float dx = o->pos.x - p->pos.x;
 		float dy = o->pos.y - p->pos.y;
@@ -739,13 +739,13 @@ void Race_Collide(void)
 int Race_PlayerRank(void)
 {
 	int n = g_track.n + 1;
-	float prog[7];
-	for (int i = 1; i <= 7; i++) {
+	float prog[NUM_MACHINES - 1];
+	for (int i = 1; i < NUM_MACHINES; i++) {
 		prog[i - 1] = (float)(g_machines[i].lap * n + g_machines[i].tp.seg) + g_machines[i].tp.t;
 	}
 	float me = (float)(g_machines[0].lap * n + g_machines[0].tp.seg) + g_machines[0].tp.t;
 	int ahead = 0;
-	for (int i = 0; i < 7; i++) {
+	for (int i = 0; i < NUM_MACHINES - 1; i++) {
 		if (me < prog[i]) {
 			ahead++;
 		}

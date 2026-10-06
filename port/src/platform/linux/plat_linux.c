@@ -564,6 +564,11 @@ void gfx_draw_triangles(const GfxVertex *v, int count, int use_vertex_color)
 	glDrawArrays(GL_TRIANGLES, 0, count);
 }
 
+void gfx_draw_triangles_temp(const GfxVertex *v, int count, int use_vertex_color)
+{
+	gfx_draw_triangles(v, count, use_vertex_color); /* OpenGL copies at draw time */
+}
+
 void gfx_draw_lines(const GfxVertex *v, int count)
 {
 	set_pointers(v, 1, 0);

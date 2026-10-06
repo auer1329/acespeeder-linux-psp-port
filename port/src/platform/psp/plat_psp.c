@@ -3,6 +3,7 @@
 #include <pspaudiolib.h>
 #include <pspctrl.h>
 #include <pspdisplay.h>
+#include <pspdmac.h>
 #include <pspgu.h>
 #include <pspgum.h>
 #include <pspkernel.h>
@@ -27,6 +28,7 @@ PSP_HEAP_SIZE_KB(-1024); /* all but 1 MB of user RAM for the heap */
 
 static unsigned int __attribute__((aligned(16))) g_list[256 * 1024];
 static void *g_fbp0, *g_fbp1, *g_zbp;
+static void *g_draw_buf; /* the buffer sceGu draws into this frame */
 static int g_quit;
 static SceUID g_audio_sema = -1;
 
@@ -122,6 +124,7 @@ int plat_init(void)
 	sceGuInit();
 	sceGuStart(GU_DIRECT, g_list);
 	sceGuDrawBuffer(GU_PSM_5650, g_fbp0, BUF_W);
+	g_draw_buf = g_fbp0;
 	sceGuDispBuffer(SCR_W, SCR_H, g_fbp1, BUF_W);
 	sceGuDepthBuffer(g_zbp, BUF_W);
 	sceGuOffset(2048 - SCR_W / 2, 2048 - SCR_H / 2);
@@ -228,40 +231,44 @@ void gfx_end_frame(void)
 	sceGuSync(0, 0);
 	g_in_frame = 0;
 	sceDisplayWaitVblankStart();
-	void *shown = sceGuSwapBuffers();
-	(void)shown;
+	sceGuSwapBuffers();
+	g_draw_buf = g_draw_buf == g_fbp0 ? g_fbp1 : g_fbp0;
+}
+
+static void save_ppm(const char *path, const uint16_t *px)
+{
+	FILE *f = fopen(path, "wb");
+	if (!f) {
+		return;
+	}
+	fprintf(f, "P6\n%d %d\n255\n", SCR_W, SCR_H);
+	unsigned char row[SCR_W * 3];
+	for (int y = 0; y < SCR_H; y++) {
+		for (int x = 0; x < SCR_W; x++) {
+			uint16_t c = px[y * BUF_W + x];
+			row[x * 3] = (unsigned char)((c & 0x1f) << 3);
+			row[x * 3 + 1] = (unsigned char)((c >> 5 & 0x3f) << 2);
+			row[x * 3 + 2] = (unsigned char)((c >> 11 & 0x1f) << 3);
+		}
+		fwrite(row, 1, sizeof(row), f);
+	}
+	fclose(f);
 }
 
 void plat_screenshot(const char *path)
 {
-	/* Read the frame just drawn (current draw buffer) after the GPU is done. */
+	/* Read the frame being drawn after the GPU is done with it. The copy goes
+	 * through the DMA controller: emulators such as PPSSPP keep framebuffers on
+	 * the host GPU and only write them back to VRAM for copies they can see. */
 	sceGuFinish();
 	sceGuSync(0, 0);
-	void *drawn = (void *)((unsigned int)sceGeEdramGetAddr() + (unsigned int)g_fbp0);
-	/* sceGuSwapBuffers alternates the buffers; find which one we drew into. */
-	void *disp_addr;
-	int bw, fmt;
-	sceDisplayGetFrameBuf(&disp_addr, &bw, &fmt, PSP_DISPLAY_SETBUF_NEXTFRAME);
-	unsigned int base = (unsigned int)sceGeEdramGetAddr();
-	unsigned int disp = ((unsigned int)disp_addr & 0x0fffffff) | (base & 0xf0000000);
-	if (disp == (unsigned int)drawn) {
-		drawn = (void *)(base + (unsigned int)g_fbp1);
-	}
-	uint16_t *px = (uint16_t *)((unsigned int)drawn | 0x40000000); /* uncached */
-	FILE *f = fopen(path, "wb");
-	if (f) {
-		fprintf(f, "P6\n%d %d\n255\n", SCR_W, SCR_H);
-		unsigned char row[SCR_W * 3];
-		for (int y = 0; y < SCR_H; y++) {
-			for (int x = 0; x < SCR_W; x++) {
-				uint16_t c = px[y * BUF_W + x];
-				row[x * 3] = (unsigned char)((c & 0x1f) << 3);
-				row[x * 3 + 1] = (unsigned char)((c >> 5 & 0x3f) << 2);
-				row[x * 3 + 2] = (unsigned char)((c >> 11 & 0x1f) << 3);
-			}
-			fwrite(row, 1, sizeof(row), f);
-		}
-		fclose(f);
+	size_t size = sizeof(uint16_t) * BUF_W * SCR_H;
+	uint16_t *buf = memalign(64, size);
+	if (buf) {
+		sceKernelDcacheWritebackInvalidateRange(buf, size);
+		sceDmacMemcpy(buf, (char *)sceGeEdramGetAddr() + (unsigned int)g_draw_buf, size);
+		save_ppm(path, buf);
+		free(buf);
 	}
 	sceGuStart(GU_DIRECT, g_list);
 }
@@ -527,6 +534,15 @@ void gfx_draw_triangles(const GfxVertex *v, int count, int use_vertex_color)
 	(void)use_vertex_color;
 	sceKernelDcacheWritebackRange(v, sizeof(GfxVertex) * count);
 	sceGumDrawArray(GU_TRIANGLES, VTYPE_3D, count, 0, v);
+}
+
+/* The GE reads vertices while the CPU goes on: copy arrays the caller reuses. */
+void gfx_draw_triangles_temp(const GfxVertex *v, int count, int use_vertex_color)
+{
+	(void)use_vertex_color;
+	GfxVertex *copy = sceGuGetMemory(sizeof(GfxVertex) * count);
+	memcpy(copy, v, sizeof(GfxVertex) * count);
+	sceGumDrawArray(GU_TRIANGLES, VTYPE_3D, count, 0, copy);
 }
 
 void gfx_draw_lines(const GfxVertex *v, int count)

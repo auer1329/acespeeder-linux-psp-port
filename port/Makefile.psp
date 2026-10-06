@@ -4,12 +4,18 @@ APP ?= viewer
 TARGET = $(APP)
 
 ENGINE_OBJS = src/engine/rmath.o src/engine/xfile.o src/engine/image.o src/engine/rm.o \
+              src/engine/font.o src/engine/sprite.o \
               src/platform/mixer.o src/platform/psp/plat_psp.o
 
-GAME_OBJS = src/game/gmath.o src/game/track.o src/game/machine.o src/game/camera.o src/game/sound.o
+GAME_OBJS = src/game/gmath.o src/game/track.o src/game/machine.o src/game/camera.o src/game/sound.o \
+            src/game/effects.o src/game/hud.o src/game/race.o src/game/save.o src/game/replay.o \
+            src/game/fx.o src/game/scene.o src/game/course_objects.o
 
 ifeq ($(APP),viewer)
 APP_OBJS = src/tools/viewer.o
+endif
+ifeq ($(APP),game)
+APP_OBJS = src/main.o $(GAME_OBJS)
 endif
 ifeq ($(APP),trackview)
 APP_OBJS = src/tools/trackview.o $(GAME_OBJS)
@@ -23,7 +29,7 @@ CXXFLAGS = $(CFLAGS)
 ASFLAGS = $(CFLAGS)
 LIBDIR =
 LDFLAGS =
-LIBS = -lpspgum -lpspgu -lpspaudiolib -lpspaudio -lpsppower -lpsprtc -lm
+LIBS = -lpspgum -lpspgu -lpspdmac -lpspaudiolib -lpspaudio -lpsppower -lpsprtc -lm
 
 EXTRA_TARGETS = EBOOT.PBP
 PSP_EBOOT_TITLE = AceSpeeder! ($(APP))

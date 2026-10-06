@@ -209,7 +209,7 @@ static void draw_fan(const GfxVertex *v, int n)
 		tri[k++] = v[i];
 		tri[k++] = v[i + 1];
 	}
-	gfx_draw_triangles(tri, k, 1);
+	gfx_draw_triangles_temp(tri, k, 1);
 }
 
 static void render_cb(RMUserVisual *uv, void *arg, RMViewport *view)

@@ -112,7 +112,7 @@ void Save_Write(const SaveData *s)
 	}
 	fprintf(f, "%d\n%d\n%d\n", s->opt[1], s->opt[0], s->opt[3]);
 	fprintf(f, "%d\n%d\n%d\n", s->opt2[0], s->opt2[1], s->opt2[2]);
-	fprintf(f, "%d\n%d\n%d\n", s->code[0], s->code[1], s->code[2]);
+	fprintf(f, "%d\n%d\n%d\n", (int)s->code[0], (int)s->code[1], (int)s->code[2]);
 	fclose(f);
 }
 

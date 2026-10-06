@@ -138,7 +138,7 @@ void Replay_Save(Replay *r, int stage, int course)
 	}
 	fprintf(f, "%d\n", r->machine);
 	fprintf(f, "%lf\n", r->time);
-	fprintf(f, "%d\n", r->count);
+	fprintf(f, "%d\n", (int)r->count);
 	for (int i = 0; i < r->count; i++) {
 		fprintf(f, "%d\n", r->data[i]);
 	}

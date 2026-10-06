@@ -80,8 +80,11 @@ int gfx_texture_create(int w, int h, const uint32_t *rgba, int filter_linear);
 void gfx_texture_destroy(int tex);
 void gfx_texture_bind(int tex); /* -1 = untextured */
 
-/* prims: triangles; use_vertex_color: diffuse comes from GfxVertex.color instead of material */
+/* prims: triangles; use_vertex_color: diffuse comes from GfxVertex.color instead of material.
+ * The GPU may read the array after the call returns: it must stay unchanged until the
+ * frame ends. gfx_draw_triangles_temp copies it first, for arrays that are reused. */
 void gfx_draw_triangles(const GfxVertex *v, int count, int use_vertex_color);
+void gfx_draw_triangles_temp(const GfxVertex *v, int count, int use_vertex_color);
 void gfx_draw_lines(const GfxVertex *v, int count);
 
 /* 2D in the original's 640x480 virtual screen. Textured quad from texel rect to screen rect. */

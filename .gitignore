@@ -12,3 +12,6 @@ re/ghidra_project/
 re/decomp_raw/
 re/ghidra_headless.log
 __pycache__/
+port/dist/
+port/ICON0.PNG
+port/PIC1.PNG

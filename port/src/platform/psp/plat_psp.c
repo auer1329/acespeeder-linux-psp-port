@@ -181,8 +181,12 @@ int plat_should_quit(void)
 
 /* ------------------------------------------------------------------ input */
 
+/* Cross/Start: accelerate and confirm. Circle/Square: cancel and pause.
+ * Triangle steps through the four chase views (F2, F3, F4, F1 on the PC). */
 void plat_read_input(int32_t keys[IN_COUNT])
 {
+	static const int views[4] = {IN_F2, IN_F3, IN_F4, IN_F1};
+	static int view, triangle_was_down;
 	SceCtrlData pad;
 	sceCtrlPeekBufferPositive(&pad, 1);
 	unsigned int b = pad.Buttons;
@@ -192,7 +196,11 @@ void plat_read_input(int32_t keys[IN_COUNT])
 	if ((b & PSP_CTRL_LEFT) || pad.Lx < 128 - 50) keys[IN_LEFT] = 1;
 	if (b & (PSP_CTRL_CROSS | PSP_CTRL_START)) keys[IN_A] = 1;
 	if (b & (PSP_CTRL_CIRCLE | PSP_CTRL_SQUARE)) keys[IN_B] = 1;
-	if (b & PSP_CTRL_TRIANGLE) keys[IN_F1] = 1; /* placeholder mapping, revisit with game code */
+	if ((b & PSP_CTRL_TRIANGLE) && !triangle_was_down) {
+		view = (view + 1) % 4;
+		keys[views[view]] = 1;
+	}
+	triangle_was_down = (b & PSP_CTRL_TRIANGLE) != 0;
 	if ((b & PSP_CTRL_SELECT) && (b & PSP_CTRL_START)) keys[IN_ESC] = 1;
 }
 

@@ -77,6 +77,7 @@ extern Machine g_machines[NUM_MACHINES];
 extern Vec3 g_playerFramePos;
 extern Mat3 g_playerFrameRot;
 extern Pickups g_pickups;
+extern const float k_max_throttle[8]; /* 0x44a344 throttle limit per model */
 extern Sparks g_sparks;
 extern int32_t g_input[14];
 extern int32_t g_inputPrev[14];

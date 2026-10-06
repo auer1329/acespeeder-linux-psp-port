@@ -11,7 +11,7 @@ find_package(OpenGL REQUIRED)
 
 set(ENGINE_SRC
   src/engine/rmath.c
-  src/engine/xfile.c src/engine/font.c
+  src/engine/xfile.c src/engine/font.c src/engine/sprite.c
   src/engine/image.c
   src/engine/rm.c
   src/platform/mixer.c
@@ -29,7 +29,7 @@ set(GAME_SRC src/game/gmath.c src/game/track.c src/game/machine.c src/game/camer
 # The original's physics ran in single precision: no fused/contracted operations.
 set(GAME_FLAGS -Wall -Wextra -Wno-unused-parameter -ffp-contract=off)
 
-add_library(game STATIC ${GAME_SRC} src/game/sound.c src/game/fx.c)
+add_library(game STATIC ${GAME_SRC} src/game/sound.c src/game/fx.c src/game/scene.c src/game/course_objects.c)
 target_link_libraries(game PUBLIC engine)
 target_compile_options(game PRIVATE ${GAME_FLAGS})
 
@@ -37,6 +37,10 @@ target_compile_options(game PRIVATE ${GAME_FLAGS})
 add_library(gametest SHARED ${GAME_SRC} src/tools/testlib.c src/engine/rmath.c)
 target_compile_options(gametest PRIVATE ${GAME_FLAGS} -DGAME_TESTLIB)
 target_link_libraries(gametest PRIVATE m)
+
+add_executable(acespeeder src/main.c)
+target_link_libraries(acespeeder game)
+target_compile_options(acespeeder PRIVATE -Wall -Wextra -Wno-unused-parameter)
 
 add_executable(viewer src/tools/viewer.c)
 target_link_libraries(viewer engine)

@@ -10,6 +10,7 @@
 int plat_init(void);
 void plat_shutdown(void);
 uint32_t plat_ticks_ms(void);
+void plat_sleep_ms(int ms);
 int plat_should_quit(void); /* window closed / HOME pressed */
 void plat_screenshot(const char *path); /* binary PPM of the current back buffer (debug aid) */
 

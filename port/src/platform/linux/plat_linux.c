@@ -221,6 +221,11 @@ uint32_t plat_ticks_ms(void)
 	return SDL_GetTicks();
 }
 
+void plat_sleep_ms(int ms)
+{
+	SDL_Delay((Uint32)ms);
+}
+
 static void pump(void)
 {
 	SDL_Event e;

@@ -42,6 +42,7 @@ void Race_Setup(Race *r);    /* 0x417070 builds the race scene */
 void Race_SetupStart(Race *r);
 void Race_SetupGrid(void);
 void Race_Cleanup(Race *r);  /* 0x414fe0 */
+void Race_Render(Race *r);   /* 0x412f40 draws the race and its HUD */
 
 /* Shutter that closes over the view (original 0x44eeb8). */
 void Doors_Open(float t);    /* 0x40dc90 */

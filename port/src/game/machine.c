@@ -22,7 +22,7 @@ int32_t g_inputPrev[14];
 double g_phaseTime;
 
 /* Per-model tables (0x44a344..0x44a3e0); index 7 doubles as the autopilot set. */
-static const float k_max_throttle[8] = {2.85f, 2.55f, 2.7f, 3.0f, 2.55f, 2.85f, 2.7f, 3.0f};
+const float k_max_throttle[8] = {2.85f, 2.55f, 2.7f, 3.0f, 2.55f, 2.85f, 2.7f, 3.0f};
 static const float k_boost[8] = {8, 6, 10, 8, 10, 6, 8, 10};
 static const float k_jump_up[8] = {4, 3, 5, 4, 5, 3, 4, 5};
 static const float k_jump_fwd[8] = {4, 3, 5, 4, 5, 3, 4, 5};

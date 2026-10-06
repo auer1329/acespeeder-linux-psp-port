@@ -166,6 +166,11 @@ uint32_t plat_ticks_ms(void)
 	return (uint32_t)(sceKernelGetSystemTimeWide() / 1000);
 }
 
+void plat_sleep_ms(int ms)
+{
+	sceKernelDelayThread((SceUInt)ms * 1000);
+}
+
 int plat_should_quit(void)
 {
 	return g_quit;

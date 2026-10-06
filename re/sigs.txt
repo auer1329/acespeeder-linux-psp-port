@@ -33,4 +33,13 @@
 # --- machines
 004047e0 void __thiscall Machine_Init(Machine *m);
 00404aa0 void __thiscall Machine_Update(Machine *m);
-00407230 void __thiscall Machine_Update2(Machine *m);
+00406f70 void Race_Collide(void);
+004071a0 int Race_PlayerRank(void);
+00406da0 void __thiscall Machine_Crash(Machine *m);
+00407840 void __thiscall Machine_BestLap(Machine *m);
+004049a0 void __thiscall Machine_Launch(Machine *m);
+00407230 void __thiscall Machine_UpdatePose(Machine *m);
+00401180 void __thiscall Camera_Init(Camera *c);
+004011f0 void __thiscall Camera_Chase(Camera *c);
+004082d0 void __thiscall Track_Move(Track *trk, float dx, float dy, float dz, TrackPos *p);
+00410e50 int __thiscall Sparks_Add(void *sparks, Vec3 v);

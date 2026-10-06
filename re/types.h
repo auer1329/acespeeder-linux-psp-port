@@ -70,15 +70,52 @@ typedef struct Machine {
 	TrackPos tp;          /* 0x004 position on the track */
 	Vec3 pos;             /* 0x028 world position */
 	Mat3 rot;             /* 0x034 world orientation */
-	char u58[0x50];       /* 0x058 */
+	Vec3 dpos;            /* 0x058 displayed position */
+	Mat3 drot;            /* 0x064 displayed orientation */
+	float throttle;       /* 0x088 */
+	Vec3 accel;           /* 0x08c */
+	Vec3 vel;             /* 0x098 */
+	float steer;          /* 0x0a4 */
 	short alive;          /* 0x0a8 */
-	short u_aa;           /* 0x0aa */
-	short u_ac;           /* 0x0ac */
+	short on_road;        /* 0x0aa */
+	short grounded;       /* 0x0ac */
 	short lap;            /* 0x0ae */
 	float power;          /* 0x0b0 */
-	char ub4[0x3c];       /* 0x0b4 */
+	short airborne;       /* 0x0b4 */
+	short pad1;
+	float air_time;       /* 0x0b8 */
+	short path_idx;       /* 0x0bc */
+	short pad2;
+	TrackPos path_tp;     /* 0x0c0 */
+	float hit_time;       /* 0x0e4 */
+	short sp_active;      /* 0x0e8 */
+	short sp_kind;        /* 0x0ea */
+	float sp_timer;       /* 0x0ec */
 	double time;          /* 0x0f0 */
-	char uf8[0x7c];       /* 0x0f8 */
-	short u174;           /* 0x174 */
+	double lap_time[8];   /* 0x0f8 */
+	double best_lap;      /* 0x138 */
+	short rank;           /* 0x140 */
+	short shadow_vis;     /* 0x142 */
+	Vec3 shadow_pos;      /* 0x144 */
+	Mat3 shadow_rot;      /* 0x150 */
+	short autopilot;      /* 0x174 */
 	short is_ai;          /* 0x176 */
 } Machine;
+
+/* Race camera at 0x44b4d0, 0x1a0 bytes. */
+typedef struct Camera {
+	Vec3 pos;             /* 0x000 */
+	Mat3 rot;             /* 0x00c */
+	short mode;           /* 0x030 */
+	short pad0;
+	float dist;           /* 0x034 */
+	float target_dist;    /* 0x038 */
+	Mat3 base;            /* 0x03c */
+	Mat3 lag;             /* 0x060 */
+	Mat3 look;            /* 0x084 */
+	Mat3 smooth;          /* 0x0a8 */
+	Vec3 target;          /* 0x0cc */
+	char ud8[0xac];       /* 0x0d8 */
+	float sway_phase;     /* 0x184 */
+	char u188[0x18];      /* 0x188 */
+} Camera;

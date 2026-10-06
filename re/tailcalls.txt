@@ -1,0 +1,2 @@
+# addr of a jmp that is a tail call -- applied by scripts/FixTailCalls.java (run.sh)
+0041c07f  MainFrame -> Race_Render

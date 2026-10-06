@@ -1,5 +1,6 @@
 /* PSP backend: sceGu rendering, sceCtrl input, pspaudiolib output. */
 #include <malloc.h>
+#include <math.h>
 #include <pspaudiolib.h>
 #include <pspctrl.h>
 #include <pspdisplay.h>
@@ -218,9 +219,11 @@ void plat_read_input(int32_t keys[IN_COUNT])
 #define MAX_TEX 512
 
 typedef struct {
-	void *data;      /* swizzled 5551 */
+	void *data;      /* swizzled 16-bit texels */
+	int psm;         /* GU_PSM_5551 (3D) or GU_PSM_4444 (2D) */
 	int w, h;        /* buffer size (power of two) */
 	int img_w, img_h;/* original image size */
+	float ku, kv;    /* image texel -> buffer texel, for 2D quads */
 	int used;
 } PspTex;
 
@@ -482,6 +485,52 @@ static void swizzle16(uint16_t *out, const uint16_t *in, int w, int h)
 	}
 }
 
+/* 2D images (HUD bitmaps, the font) are drawn in 640x480 coordinates onto the
+ * 480x272 screen. Shrunk on the fly with point sampling they lose whole rows
+ * and columns, so they are shrunk once here with a box filter instead, keeping
+ * 4-bit alpha for antialiased edges; colours are averaged over the opaque part
+ * so transparent (colour-keyed) texels do not darken the edges. */
+static uint16_t *downscale_2d(int w, int h, const uint32_t *rgba, int *ow, int *oh, int *tw, int *th)
+{
+	const float fx = (float)SCR_W / VIRT_W, fy = (float)SCR_H / VIRT_H;
+	int dw = (int)ceilf(w * fx), dh = (int)ceilf(h * fy);
+	*ow = dw, *oh = dh;
+	*tw = pow2(dw), *th = pow2(dh);
+	uint16_t *out = calloc((size_t)*tw * *th, sizeof(uint16_t));
+	if (!out) {
+		return NULL;
+	}
+	for (int y = 0; y < dh; y++) {
+		float y0 = y / fy, y1 = (y + 1) / fy;
+		for (int x = 0; x < dw; x++) {
+			float x0 = x / fx, x1 = (x + 1) / fx;
+			float sum_w = 0, sum_a = 0, sr = 0, sg = 0, sb = 0;
+			for (int sy = (int)y0; sy < h && sy < y1; sy++) {
+				float wy = fminf(y1, sy + 1.0f) - fmaxf(y0, (float)sy);
+				for (int sx = (int)x0; sx < w && sx < x1; sx++) {
+					float wgt = wy * (fminf(x1, sx + 1.0f) - fmaxf(x0, (float)sx));
+					uint32_t c = rgba[sy * w + sx];
+					float a = (float)(c >> 24) * wgt;
+					sum_w += wgt;
+					sum_a += a;
+					sr += (float)(c & 0xff) * a;
+					sg += (float)(c >> 8 & 0xff) * a;
+					sb += (float)(c >> 16 & 0xff) * a;
+				}
+			}
+			if (sum_w <= 0.0f || sum_a <= 0.0f) {
+				continue;
+			}
+			/* thin strokes cover only part of a screen pixel: strengthen
+			 * partial coverage so they stay visible */
+			int a = (int)(255.0f * sqrtf(sum_a / sum_w / 255.0f) + 0.5f);
+			int r = (int)(sr / sum_a + 0.5f), g = (int)(sg / sum_a + 0.5f), b = (int)(sb / sum_a + 0.5f);
+			out[y * *tw + x] = (uint16_t)((a >> 4) << 12 | (b >> 4) << 8 | (g >> 4) << 4 | (r >> 4));
+		}
+	}
+	return out;
+}
+
 int gfx_texture_create(int w, int h, const uint32_t *rgba, int filter_linear)
 {
 	int id = -1;
@@ -494,30 +543,49 @@ int gfx_texture_create(int w, int h, const uint32_t *rgba, int filter_linear)
 	if (id < 0) {
 		return -1;
 	}
-	int tw = pow2(w), th = pow2(h);
-	uint16_t *lin = malloc(sizeof(uint16_t) * tw * th);
-	for (int y = 0; y < th; y++) {
-		for (int x = 0; x < tw; x++) {
-			uint32_t c;
-			if (filter_linear) { /* resample so UVs 0..1 still cover the image */
-				c = rgba[(y * h / th) * w + (x * w / tw)];
-			}
-			else {
-				c = (x < w && y < h) ? rgba[y * w + x] : 0;
-			}
-			uint32_t r = c & 0xff, g = c >> 8 & 0xff, b = c >> 16 & 0xff, a = c >> 24;
-			lin[y * tw + x] = (uint16_t)((a >= 128) << 15 | (b >> 3) << 10 | (g >> 3) << 5 | (r >> 3));
+	int tw, th;
+	uint16_t *lin;
+	PspTex t = {0};
+	if (filter_linear) {
+		tw = pow2(w), th = pow2(h);
+		lin = malloc(sizeof(uint16_t) * tw * th);
+		if (!lin) {
+			return -1;
 		}
+		for (int y = 0; y < th; y++) {
+			for (int x = 0; x < tw; x++) {
+				/* resample so UVs 0..1 still cover the image */
+				uint32_t c = rgba[(y * h / th) * w + (x * w / tw)];
+				uint32_t r = c & 0xff, g = c >> 8 & 0xff, b = c >> 16 & 0xff, a = c >> 24;
+				lin[y * tw + x] = (uint16_t)((a >= 128) << 15 | (b >> 3) << 10 | (g >> 3) << 5 | (r >> 3));
+			}
+		}
+		t.psm = GU_PSM_5551;
+		t.img_w = w, t.img_h = h;
+		t.ku = (float)tw / w, t.kv = (float)th / h;
+	}
+	else {
+		int dw, dh;
+		lin = downscale_2d(w, h, rgba, &dw, &dh, &tw, &th);
+		if (!lin) {
+			return -1;
+		}
+		t.psm = GU_PSM_4444;
+		t.img_w = w, t.img_h = h;
+		t.ku = (float)SCR_W / VIRT_W, t.kv = (float)SCR_H / VIRT_H;
 	}
 	uint16_t *sw = memalign(16, sizeof(uint16_t) * tw * th);
+	if (!sw) {
+		free(lin);
+		return -1;
+	}
 	swizzle16(sw, lin, tw, th);
 	free(lin);
 	sceKernelDcacheWritebackRange(sw, sizeof(uint16_t) * tw * th);
-	g_tex[id] = (PspTex){sw, tw, th, w, h, 1};
-	if (!filter_linear) {
-		g_tex[id].img_w = tw; /* padded: texel coordinates stay 1:1 */
-		g_tex[id].img_h = th;
-	}
+	t.data = sw;
+	t.w = tw, t.h = th;
+	t.used = 1;
+	g_tex[id] = t;
 	return id;
 }
 
@@ -539,7 +607,7 @@ void gfx_texture_bind(int tex)
 		PspTex *t = &g_tex[tex];
 		sceGuEnable(GU_TEXTURE_2D);
 		if (g_bound != tex) {
-			sceGuTexMode(GU_PSM_5551, 0, 0, 1);
+			sceGuTexMode(t->psm, 0, 0, 1);
 			sceGuTexImage(0, t->w, t->h, t->w, t->data);
 			sceGuTexFlush();
 			g_bound = tex;
@@ -618,7 +686,8 @@ void gfx_begin_2d(void)
 	sceGuDisable(GU_FOG);
 	sceGuEnable(GU_ALPHA_TEST);
 	sceGuEnable(GU_BLEND);
-	sceGuTexFilter(GU_NEAREST, GU_NEAREST);
+	sceGuAlphaFunc(GU_GREATER, 0, 0xff); /* keep the antialiased edges */
+	sceGuTexFilter(GU_LINEAR, GU_LINEAR);
 	sceGuTexWrap(GU_CLAMP, GU_CLAMP);
 }
 
@@ -629,12 +698,20 @@ void gfx_draw_quad_2d(int tex, float sx, float sy, float sw, float sh,
 		return;
 	}
 	PspTex *t = &g_tex[tex];
-	float ku = (float)t->w / t->img_w, kv = (float)t->h / t->img_h;
+	float ku = t->ku, kv = t->kv;
+	float u0 = sx * ku, v0 = sy * kv, u1 = (sx + sw) * ku, v1 = (sy + sh) * kv;
 	float x0 = dx * SCR_W / VIRT_W, y0 = dy * SCR_H / VIRT_H;
 	float x1 = (dx + dw) * SCR_W / VIRT_W, y1 = (dy + dh) * SCR_H / VIRT_H;
+	if (t->psm == GU_PSM_4444 && sw == dw && sh == dh) {
+		/* An unscaled blit of an image already shrunk to screen scale: copy
+		 * whole texels to whole pixels, as fractional offsets drop rows. */
+		u0 = floorf(u0 + 0.5f), v0 = floorf(v0 + 0.5f), u1 = floorf(u1 + 0.5f), v1 = floorf(v1 + 0.5f);
+		x0 = floorf(x0 + 0.5f), y0 = floorf(y0 + 0.5f);
+		x1 = x0 + (u1 - u0), y1 = y0 + (v1 - v0);
+	}
 	V2D *q = sceGuGetMemory(sizeof(V2D) * 2);
-	q[0] = (V2D){sx * ku, sy * kv, color, x0, y0, 0};
-	q[1] = (V2D){(sx + sw) * ku, (sy + sh) * kv, color, x1, y1, 0};
+	q[0] = (V2D){u0, v0, color, x0, y0, 0};
+	q[1] = (V2D){u1, v1, color, x1, y1, 0};
 	gfx_texture_bind(tex);
 	sceGuDrawArray(GU_SPRITES, VTYPE_2D, 2, 0, q);
 }
@@ -655,6 +732,7 @@ void gfx_fill_rect_2d(float x, float y, float w, float h, uint32_t color)
 
 void gfx_end_2d(void)
 {
+	sceGuAlphaFunc(GU_GREATER, 0x80, 0xff);
 	sceGuDisable(GU_ALPHA_TEST);
 	sceGuDisable(GU_BLEND);
 	sceGuEnable(GU_DEPTH_TEST);

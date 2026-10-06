@@ -35,7 +35,7 @@ void font_init(void)
 			px[(glyph_y[i] + j / w) * ATLAS_W + glyph_x[i] + j % w] = 0x00ffffffu | a << 24;
 		}
 	}
-	tex = gfx_texture_create(ATLAS_W, atlas_h, px, 1);
+	tex = gfx_texture_create(ATLAS_W, atlas_h, px, 0); /* a 2D image */
 	free(px);
 }
 

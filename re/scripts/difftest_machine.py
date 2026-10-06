@@ -36,6 +36,12 @@ FIELDS += [("steer", 0xa4, "f"), ("alive", 0xa8, "h"), ("on_road", 0xaa, "h"), (
            ("lap", 0xae, "h"), ("power", 0xb0, "f"), ("airborne", 0xb4, "h"), ("air_time", 0xb8, "f"),
            ("path_idx", 0xbc, "h"), ("hit_time", 0xe4, "f"), ("sp_active", 0xe8, "h"), ("sp_kind", 0xea, "h"),
            ("sp_timer", 0xec, "f")]
+POSE_FIELDS = [(f"pos.{c}", 0x28 + 4 * i, "f") for i, c in enumerate("xyz")]
+POSE_FIELDS += [(f"rot[{i}]", 0x34 + 4 * i, "f") for i in range(9)]
+POSE_FIELDS += [(f"dpos.{c}", 0x58 + 4 * i, "f") for i, c in enumerate("xyz")]
+POSE_FIELDS += [(f"drot[{i}]", 0x64 + 4 * i, "f") for i in range(9)]
+POSE_FIELDS += [("shadow_vis", 0x142, "h")] + [(f"shadow_pos.{c}", 0x144 + 4 * i, "f") for i, c in enumerate("xyz")]
+POSE_FIELDS += [(f"shadow_rot[{i}]", 0x150 + 4 * i, "f") for i in range(9)]
 
 
 class Port:
@@ -93,9 +99,9 @@ def TrackPos(s, l, h):
     return struct.pack("<hhfhhf5f", seg, 0, t, slot, 0, u, h, t * t, 1 - t, (1 - t) ** 2, 1 - u)
 
 
-def compare(a, b, tol):
+def compare(a, b, tol, fields=FIELDS):
     bad = []
-    for name, off, fmt in FIELDS:
+    for name, off, fmt in fields:
         va = struct.unpack_from("<" + fmt, a, off)[0]
         vb = struct.unpack_from("<" + fmt, b, off)[0]
         if fmt == "h":
@@ -113,11 +119,18 @@ def main():
     ap.add_argument("--ticks", type=int, default=300)
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--tol", type=float, default=1e-5)
+    ap.add_argument("--func", choices=["update", "pose"], default="update")
     args = ap.parse_args()
     rng = random.Random(args.seed)
     port = Port()
     emu = Emu()
     emu.fpcw = 0x07F
+    from fakerm import FakeRM
+    rm = FakeRM(emu)
+    scene = rm.new("IDirect3DRMFrame2", parent=None, pos=None, orient=None, visuals=[], children=[], lights=[])
+    pframe = rm.new("IDirect3DRMFrame2", parent=scene, pos=None, orient=None, visuals=[], children=[], lights=[])
+    emu.write(0x451720, struct.pack("<I", scene.addr))
+    emu.write(0x4517B4, struct.pack("<I", pframe.addr))
     sounds = []
     for addr, (op, nargs) in SOUND.items():
         emu.stub(addr, nargs, conv="thiscall", record=False,
@@ -152,11 +165,20 @@ def main():
             port.write("g_machines", m)
             sounds.clear()
             ctypes.c_int.in_dll(port.lib, "test_sound_count").value = 0
-            emu.call(0x404AA0, ecx=MACHINES)
-            port.lib.Machine_Update(ctypes.c_void_p(port.addr("g_machines")))
+            phase = rng.uniform(0, 3000)
+            emu.write(0x451F70, struct.pack("<d", phase))
+            port.write("g_phaseTime", struct.pack("<d", phase))
+            if args.func == "update":
+                emu.call(0x404AA0, ecx=MACHINES)
+                port.lib.Machine_Update(ctypes.c_void_p(port.addr("g_machines")))
+            else:
+                emu.call(0x407230, ecx=MACHINES)
+                port.lib.Machine_UpdatePose(ctypes.c_void_p(port.addr("g_machines")))
             a = emu.read(MACHINES, MACHINE_SIZE)
             b = port.read("g_machines", MACHINE_SIZE)
-            bad = compare(a, b, args.tol)
+            bad = compare(a, b, args.tol, FIELDS if args.func == "update" else POSE_FIELDS)
+            if emu.read(SEED, 4) != port.read("g_holdrand", 4):
+                bad.append(("rng", emu.read(SEED, 4).hex(), port.read("g_holdrand", 4).hex()))
             psounds = [tuple(ctypes.c_int.in_dll(port.lib, "test_sound_log").__class__.from_address(
                 port.addr("test_sound_log") + 12 * i + 4 * j).value for j in range(3))
                 for i in range(ctypes.c_int.in_dll(port.lib, "test_sound_count").value)]
@@ -182,6 +204,10 @@ def main():
                     sys.exit(1)
                 break
             m = a  # continue from the original's state
+            if args.func == "pose":  # keep the physics moving so poses vary
+                emu.write(MACHINES, m)
+                emu.call(0x404AA0, ecx=MACHINES)
+                m = emu.read(MACHINES, MACHINE_SIZE)
             if struct.unpack_from("<h", m, 0xa8)[0] == 0:
                 break
     print(f"{ticks} ticks, {fails} mismatching runs")

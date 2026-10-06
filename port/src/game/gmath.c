@@ -23,6 +23,12 @@ float x87_mul(float a, double c)
 	return round_exact(p, fma((double)a, c, -p));
 }
 
+float x87_muld(double a, double c)
+{
+	double p = a * c;
+	return round_exact(p, fma(a, c, -p));
+}
+
 float x87_add(float a, double c)
 {
 	double s = (double)a + c;
@@ -174,7 +180,8 @@ int crt_rand(void)
 
 float RandF(void)
 {
-	return (float)((crt_rand() % 10000) * 0.0001);
+	/* fild + fmul qword 0.0001: rounded to float by the 24-bit FPU mode */
+	return x87_mul((float)(crt_rand() % 10000), 0.0001);
 }
 
 float Wave_Decay(float x)

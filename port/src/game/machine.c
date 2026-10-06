@@ -17,6 +17,7 @@ Pickups g_pickups;
 Sparks g_sparks;
 int32_t g_input[14];
 int32_t g_inputPrev[14];
+double g_phaseTime;
 
 /* Per-model tables (0x44a344..0x44a3e0); index 7 doubles as the autopilot set. */
 static const float k_max_throttle[8] = {2.85f, 2.55f, 2.7f, 3.0f, 2.55f, 2.85f, 2.7f, 3.0f};
@@ -543,4 +544,69 @@ void Machine_Update(Machine *m)
 counters:
 	m->air_time = m->air_time + 1.0f;
 	m->hit_time = m->hit_time + 1.0f;
+}
+
+/* Display pose: tilt from how the machine sits relative to the road, hover bob,
+ * steering lean, wall-hit shake, and the shadow on the road below. */
+void Machine_UpdatePose(Machine *m)
+{
+	TrackPos_Update(&m->tp);
+	Mat3 rel = Mat3_MulT(Track_Frame(&g_track, m->tp), m->rot);
+	float tz = DMUL(rel.m[3], 0.16);
+	float tx = DMUL(DMUL(rel.m[5], 0.16), 1.65);
+	m->rot = Mat3_Mul(Mat3_Rotate(tx, 0), m->rot);
+	m->rot = Mat3_Mul(Mat3_Rotate(DMUL(tz, 1.65), 2), m->rot);
+	Vec3 p = Track_Point(&g_track, m->tp);
+	m->pos = p;
+	if (m->accel.z == 0.0f) {
+		m->dpos = p;
+	}
+	else {
+		TrackPos tp = m->tp;
+		float r = DMUL(RandF(), 0.03);
+		/* fsin is not affected by the precision setting; the multiplies are */
+		double sn = sin((double)x87_muld(g_phaseTime, 1.2));
+		float bob = DMUL(x87_mul(m->throttle, sn), 0.05);
+		tp.h = (r + bob) + tp.h;
+		if (m->airborne == 0 && m->air_time < 10.0f) {
+			float dip = (float)sin((double)DMUL(m->air_time, 0.31400000000000006));
+			tp.h = tp.h - (dip + dip);
+		}
+		m->dpos = Track_Point(&g_track, tp);
+	}
+	m->drot = Mat3_Mul(Mat3_Rotate(m->steer * 8.0f, 2), m->rot);
+	m->drot = Mat3_Mul(Mat3_Rotate(m->steer * 2.5f, 1), m->drot);
+	Vec3 shake = v3(0, 0, 0);
+	if (m->hit_time < 15.0f) {
+		float k = DADD(-DMUL(m->hit_time, 0.06666666666666667), 1.0);
+		shake.x = DMUL((float)(crt_rand() % 1000) * k, 0.0015);
+		k = DADD(-DMUL(m->hit_time, 0.06666666666666667), 1.0);
+		shake.z = DMUL((float)(crt_rand() % 1000) * k, 0.0015);
+		shake = Mat3_MulVec(shake, m->rot);
+		m->dpos = Vec3_Add(shake, m->dpos);
+	}
+
+	int s = m->tp.seg;
+	m->shadow_vis = 0;
+	if (g_track.edge[s * 8 + 3] != 0) {
+		float margin = g_track.ptype[s] == 1 ? 0.05f : 0.02f;
+		if (m->tp.u < DADD(-margin, 1.0) && margin < m->tp.u && m->tp.h > 10.0f) {
+			m->shadow_vis = 1;
+			TrackPos tp = m->tp;
+			tp.h = 18.0f;
+			Mat3 road;
+			Track_PointFrame(tp, &m->shadow_pos, &road);
+			if (m->hit_time < 15.0f) {
+				m->shadow_pos = Vec3_Add(shake, m->shadow_pos);
+			}
+			Mat3 rr = Mat3_MulT(road, m->drot);
+			float l = sqrtf(rr.m[6] * rr.m[6] + rr.m[8] * rr.m[8]);
+			Mat3 yaw = Mat3_Identity();
+			yaw.m[2] = rr.m[8] / l;
+			yaw.m[0] = rr.m[6] / l;
+			yaw.m[6] = -yaw.m[0];
+			yaw.m[8] = yaw.m[2];
+			m->shadow_rot = Mat3_Mul(yaw, road);
+		}
+	}
 }

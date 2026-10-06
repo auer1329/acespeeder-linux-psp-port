@@ -13,7 +13,8 @@ typedef struct {
 	TrackPos tp;          /* 0x004 position on the track */
 	Vec3 pos;             /* 0x028 world position */
 	Mat3 rot;             /* 0x034 world orientation */
-	float u58[12];        /* 0x058 */
+	Vec3 dpos;            /* 0x058 displayed position (with hover bob and shake) */
+	Mat3 drot;            /* 0x064 displayed orientation (with tilt and lean) */
 	float throttle;       /* 0x088 */
 	Vec3 accel;           /* 0x08c */
 	Vec3 vel;             /* 0x098 */
@@ -34,7 +35,10 @@ typedef struct {
 	int16_t sp_kind;      /* 0x0ea 0 boost, 1 jump, 2 path */
 	float sp_timer;       /* 0x0ec */
 	double time;          /* 0x0f0 race time */
-	uint8_t uf8[0x7c];    /* 0x0f8 */
+	uint8_t uf8[0x4a];    /* 0x0f8 */
+	int16_t shadow_vis;   /* 0x142 */
+	Vec3 shadow_pos;      /* 0x144 */
+	Mat3 shadow_rot;      /* 0x150 */
 	int16_t autopilot;    /* 0x174 follows the racing line (AI / demo) */
 	int16_t is_ai;        /* 0x176 */
 } Machine;
@@ -68,8 +72,12 @@ extern Pickups g_pickups;
 extern Sparks g_sparks;
 extern int32_t g_input[14];
 extern int32_t g_inputPrev[14];
+extern double g_phaseTime; /* 0x451f70: time in the current race phase */
 
 void Machine_Update(Machine *m);                                     /* 0x404aa0 */
+/* 0x407230. The original also moves the player's 3D frame here; the port does
+ * that when rendering (Race code) from dpos/drot. */
+void Machine_UpdatePose(Machine *m);
 void Track_Move(TrackPos *p, float dx, float dy, float dz);          /* 0x4082d0 */
 void Track_PointFrame(TrackPos p, Vec3 *pos, Mat3 *rot);             /* 0x407f50 */
 TrackPos Pickups_PathPos(float timer, int idx, TrackPos start);      /* 0x4193e0 */

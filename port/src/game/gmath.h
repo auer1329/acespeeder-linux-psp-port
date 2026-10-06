@@ -53,6 +53,7 @@ int crt_rand(void);
  * 24-bit precision control: the exact result rounded once to float. */
 float x87_mul(float a, double c);
 float x87_add(float a, double c);
+float x87_muld(double a, double c); /* both operands double, e.g. a qword global */
 
 /* MSVC's __ftol truncates toward zero. */
 static inline int ftol(double v) { return (int)v; }

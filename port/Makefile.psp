@@ -6,7 +6,7 @@ TARGET = $(APP)
 ENGINE_OBJS = src/engine/rmath.o src/engine/xfile.o src/engine/image.o src/engine/rm.o \
               src/platform/mixer.o src/platform/psp/plat_psp.o
 
-GAME_OBJS = src/game/gmath.o src/game/track.o
+GAME_OBJS = src/game/gmath.o src/game/track.o src/game/machine.o src/game/camera.o src/game/sound.o
 
 ifeq ($(APP),viewer)
 APP_OBJS = src/tools/viewer.o
@@ -18,7 +18,7 @@ endif
 OBJS = $(APP_OBJS) $(ENGINE_OBJS)
 
 INCDIR =
-CFLAGS = -O2 -G0 -Wall -std=gnu99
+CFLAGS = -O2 -G0 -Wall -std=gnu99 -ffp-contract=off
 CXXFLAGS = $(CFLAGS)
 ASFLAGS = $(CFLAGS)
 LIBDIR =

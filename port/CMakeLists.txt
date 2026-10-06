@@ -25,7 +25,7 @@ target_compile_options(engine PRIVATE -Wall -Wextra -Wno-unused-parameter)
 # stb_vorbis is third-party code: don't drown our warnings in its own
 set_source_files_properties(src/platform/mixer.c PROPERTIES COMPILE_OPTIONS "-w")
 
-set(GAME_SRC src/game/gmath.c src/game/track.c src/game/machine.c)
+set(GAME_SRC src/game/gmath.c src/game/track.c src/game/machine.c src/game/camera.c)
 # The original's physics ran in single precision: no fused/contracted operations.
 set(GAME_FLAGS -Wall -Wextra -Wno-unused-parameter -ffp-contract=off)
 

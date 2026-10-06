@@ -69,7 +69,8 @@ void gfx_set_material(GfxColor diffuse, GfxColor emissive, GfxColor specular, fl
 void gfx_set_fog(int on, uint32_t rgb, float start, float end); /* rgb = 0x00RRGGBB */
 void gfx_set_depth(int test, int write);
 void gfx_set_cull(int on);
-void gfx_set_blend(int on); /* src alpha / one minus src alpha */
+enum { GFX_BLEND_OFF, GFX_BLEND_ALPHA, GFX_BLEND_ADD };
+void gfx_set_blend(int mode); /* GFX_BLEND_ALPHA: src alpha / one minus src alpha; ADD: one / one */
 void gfx_set_alpha_test(int on);
 
 /* Textures are RGBA8888, any size up to 512x512. On the PSP non-power-of-two sizes are

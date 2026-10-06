@@ -11,7 +11,7 @@ find_package(OpenGL REQUIRED)
 
 set(ENGINE_SRC
   src/engine/rmath.c
-  src/engine/xfile.c
+  src/engine/xfile.c src/engine/font.c
   src/engine/image.c
   src/engine/rm.c
   src/platform/mixer.c
@@ -29,7 +29,7 @@ set(GAME_SRC src/game/gmath.c src/game/track.c src/game/machine.c src/game/camer
 # The original's physics ran in single precision: no fused/contracted operations.
 set(GAME_FLAGS -Wall -Wextra -Wno-unused-parameter -ffp-contract=off)
 
-add_library(game STATIC ${GAME_SRC} src/game/sound.c)
+add_library(game STATIC ${GAME_SRC} src/game/sound.c src/game/fx.c)
 target_link_libraries(game PUBLIC engine)
 target_compile_options(game PRIVATE ${GAME_FLAGS})
 

@@ -464,6 +464,12 @@ void gfx_set_blend(int on)
 {
 	if (on) {
 		glEnable(GL_BLEND);
+		if (on == GFX_BLEND_ADD) {
+			glBlendFunc(GL_ONE, GL_ONE);
+		}
+		else {
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		}
 	}
 	else {
 		glDisable(GL_BLEND);

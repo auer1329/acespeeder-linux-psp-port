@@ -399,6 +399,12 @@ void gfx_set_blend(int on)
 {
 	if (on) {
 		sceGuEnable(GU_BLEND);
+		if (on == GFX_BLEND_ADD) {
+			sceGuBlendFunc(GU_ADD, GU_FIX, GU_FIX, 0xffffffff, 0xffffffff);
+		}
+		else {
+			sceGuBlendFunc(GU_ADD, GU_SRC_ALPHA, GU_ONE_MINUS_SRC_ALPHA, 0, 0);
+		}
 	}
 	else {
 		sceGuDisable(GU_BLEND);

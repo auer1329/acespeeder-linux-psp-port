@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 
+#include "doors.h"
 #include "gmath.h"
 
 /* The race object (original 0x4513e0). */
@@ -44,9 +45,6 @@ void Race_SetupGrid(void);
 void Race_Cleanup(Race *r);  /* 0x414fe0 */
 void Race_Render(Race *r);   /* 0x412f40 draws the race and its HUD */
 
-/* Shutter that closes over the view (original 0x44eeb8). */
-void Doors_Open(float t);    /* 0x40dc90 */
-void Doors_Close(float t);   /* 0x40dd60 */
 
 void Music_Play(int id);     /* 0x41c510 */
 void Music_Stop(void);       /* 0x41c540 */

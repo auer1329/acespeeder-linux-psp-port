@@ -2,7 +2,7 @@
  * most five per frame, then the clock is resynchronised), and one frame is
  * drawn after each batch of ticks.
  *
- * For now the game starts straight into a race: main [stage course machine mode],
+ * It starts with the title, or straight into a race: main [stage course machine mode],
  * 1-based numbers, mode 0 grand prix / 1 time attack / 2 replay (also read from
  * a file start.txt in the data folder, for the PSP).
  *
@@ -18,6 +18,7 @@
 #include "game/machine.h"
 #include "game/race.h"
 #include "game/save.h"
+#include "game/title.h"
 #include "platform/platform.h"
 
 void Sound_LoadAll(void);
@@ -37,11 +38,24 @@ static void tick(void)
 	case GS_RACE:
 		Race_Update(&g_race);
 		break;
+	case GS_TITLE:
+		Title_Update(&g_title);
+		break;
 	case GS_MENU:
 	case GS_ENDING:
 		/* the menus are not ported yet: race the same course again */
 		start_race();
 		break;
+	}
+}
+
+static void render(void)
+{
+	if (g_gameState == GS_RACE && g_race.state == 10) {
+		Race_Render(&g_race);
+	}
+	else if (g_gameState == GS_TITLE && g_title.state == 10) {
+		Title_Render(&g_title);
 	}
 }
 
@@ -78,7 +92,14 @@ int main(int argc, char **argv)
 	if (start[3] >= 0) {
 		g_save.mode = (int16_t)start[3];
 	}
-	start_race();
+	g_title.state = 20;
+	g_race.state = 20;
+	if (start[0] > 0) {
+		start_race();
+	}
+	else {
+		g_gameState = GS_TITLE;
+	}
 
 	char list[256] = "";
 	const char *shots = getenv("ACESPEEDER_SHOTS");
@@ -97,9 +118,7 @@ int main(int argc, char **argv)
 				        g_machines[0].lap, g_machines[0].tp.seg + g_machines[0].tp.t);
 			}
 			gfx_begin_frame();
-			if (g_gameState == GS_RACE && g_race.state == 10) {
-				Race_Render(&g_race);
-			}
+			render();
 			if (atoi(shots) == t) {
 				char path[64];
 #ifdef __PSP__
@@ -141,11 +160,10 @@ int main(int argc, char **argv)
 			}
 		}
 		gfx_begin_frame();
-		if (g_gameState == GS_RACE && g_race.state == 10) {
-			Race_Render(&g_race);
-		}
+		render();
 		gfx_end_frame();
 	}
+	Title_Free(&g_title);
 	if (g_race.state == 10) {
 		Race_Cleanup(&g_race);
 	}

@@ -1,5 +1,5 @@
 /* The race scene: the 3D part of Race_Setup (0x417070), Race_Render (0x412f40)
- * with its HUD, the door shutter (0x44eeb8), the course gates and buildings,
+ * with its HUD, the course gates and buildings,
  * and Race_Cleanup (0x414fe0). The game logic itself is in race.c. */
 #include <math.h>
 #include <stdio.h>
@@ -11,6 +11,7 @@
 #include "../platform/platform.h"
 #include "camera.h"
 #include "course_objects.h"
+#include "doors.h"
 #include "effects.h"
 #include "fx.h"
 #include "hud.h"
@@ -51,7 +52,6 @@ static struct {
 	RMFrame *ai[NUM_MACHINES - 1]; /* 0x4517bc */
 	RMFrame *fx;        /* 0x451858 effects bank moved to each effect, fogged */
 	RMFrame *fx_world;  /* 0x45185c effects bank in world space */
-	RMFrame *door[2];   /* 0x44eeb8 children of the camera */
 	RMFrame *gate[16];  /* 0x44f048 */
 	int nbuild;         /* 0x44eec0 */
 	Vec3 build_pos[24];
@@ -150,49 +150,6 @@ static void building_add(const CourseBuilding *b)
 	S.build[S.nbuild] = load_object(name, pos, rot, v3(b->scale[0], b->scale[1], b->scale[2]), 0);
 	set_fog(S.build[S.nbuild]);
 	S.nbuild++;
-}
-
-/* Doors_Init (0x40d920): two halves of a shutter in front of the camera. */
-static void doors_init(void)
-{
-	static const char *const names[2] = {"doora.x", "doorb.x"};
-	for (int k = 0; k < 2; k++) {
-		S.door[k] = rm_frame_create(S.camera);
-		RMMeshBuilder *mb = rm_mb_create();
-		rm_mb_load(mb, names[k]);
-		rm_mb_scale(mb, 60.0f, 60.0f, 100.0f);
-		rm_mb_set_quality(mb, 0x88);
-		rm_mb_set_perspective(mb, 1);
-		RMMaterial *m = rm_material_create(50.0f);
-		rm_material_set_power(m, 50.0f);
-		rm_mb_set_material(mb, m);
-		rm_release(m);
-		rm_frame_add_visual(S.door[k], mb);
-		rm_release(mb);
-	}
-}
-
-/* w = 0: closed over the view, 1: fully open. */
-static void doors_place(float w)
-{
-	if (!S.door[0]) {
-		return;
-	}
-	rm_frame_set_position(S.door[0], S.camera, 0.0f, w * 80.0f - 0.5f, 50.0f);
-	rm_frame_set_position(S.door[1], S.camera, 0.0f, 0.5f - w * 80.0f, 50.0f);
-	for (int k = 0; k < 2; k++) {
-		rm_frame_set_orientation(S.door[k], S.camera, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f);
-	}
-}
-
-void Doors_Open(float t)
-{
-	doors_place(Wave_EaseIn(t * 0.015f));
-}
-
-void Doors_Close(float t)
-{
-	doors_place(Wave_Bounce(t * 0.008f));
 }
 
 void Music_Play(int id)
@@ -321,7 +278,7 @@ void Race_Setup(Race *r)
 	Track_PointFrame(TrackPos_Make(0.0f, 3.5f, -90.0f), &pos, &rot);
 	S.titbar = load_object("titbar.x", pos, rot, v3(500.0f, 500.0f, 500.0f), 1);
 
-	doors_init();
+	Doors_Init(S.camera);
 
 	/* course objects; the detail option drops the scenery and the objects */
 	int opt = g_save.opt[3];
@@ -355,7 +312,8 @@ void Race_Cleanup(Race *r)
 	r->state = 20;
 	Fx_Free();
 	hud_free(&S.hud);
-	RMFrame **frames[] = {&S.door[0], &S.door[1], &S.title, &S.titbar, &S.player, &S.shadow, &S.ground,
+	Doors_Free();
+	RMFrame **frames[] = {&S.title, &S.titbar, &S.player, &S.shadow, &S.ground,
 	                      &S.sky, &S.fx, &S.fx_world, &S.sun, &S.camera};
 	for (size_t i = 0; i < sizeof(frames) / sizeof(frames[0]); i++) {
 		RM_RELEASE(*frames[i]);
@@ -672,18 +630,6 @@ static void hud(Race *r)
 	}
 }
 
-/* The shutter is lit from a fixed direction relative to the view (0x40dad0). */
-static void render_doors(void)
-{
-	Vec3 dir, up;
-	rm_frame_get_orientation(S.sun, S.scene, &dir, &up);
-	Mat3 m = Mat3_Mul(Mat3_Mul(Mat3_Rotate(2.14f, 0), Mat3_Rotate(3.84f, 1)), g_camera.rot);
-	rm_frame_set_orientation(S.sun, S.scene, m.m[6], m.m[7], m.m[8], m.m[3], m.m[4], m.m[5]);
-	rm_viewport_render(S.view, S.door[0]);
-	rm_viewport_render(S.view, S.door[1]);
-	rm_frame_set_orientation(S.sun, S.scene, dir.x, dir.y, dir.z, up.x, up.y, up.z);
-}
-
 void Race_Render(Race *r)
 {
 	if (!S.scene) {
@@ -758,7 +704,7 @@ void Race_Render(Race *r)
 	case PH_NEXT:
 	case PH_QUIT:
 	case PH_GAMEOVER:
-		render_doors();
+		Doors_Render(S.view, S.scene, S.sun, g_camera.rot);
 		break;
 	}
 }

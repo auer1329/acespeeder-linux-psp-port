@@ -217,7 +217,8 @@ static void render_cb(RMUserVisual *uv, void *arg, RMViewport *view)
 	(void)uv, (void)arg, (void)view;
 	gfx_set_lighting(0);
 	gfx_set_blend(GFX_BLEND_ADD);
-	gfx_set_cull(0);
+	/* the original leaves Direct3D's default back-face culling on: drawing the
+	 * back faces too would hide parts of the front ones through the z-buffer */
 	gfx_texture_bind(textures[mode]);
 	if (mode < 4 || mode == FX_RING || mode == FX_SCENERY) {
 		FxMesh *m = &meshes[mode];
@@ -261,7 +262,6 @@ static void render_cb(RMUserVisual *uv, void *arg, RMViewport *view)
 		gfx_end_2d();
 	}
 	gfx_set_blend(GFX_BLEND_OFF);
-	gfx_set_cull(1);
 	gfx_set_lighting(1);
 }
 

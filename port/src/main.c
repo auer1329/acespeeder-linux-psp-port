@@ -9,7 +9,7 @@
  * Debugging: ACESPEEDER_SHOTS="t1,t2,..." (or the same list in a file shots.txt
  * in the data folder, for the PSP) runs one logic tick per frame without waiting,
  * saves shot_<tick>.ppm at those ticks and quits after the last. ACESPEEDER_KEYS=
- * "t:k,t:k,..." presses key k (u d l r a b) during tick t. ACESPEEDER_RATE (or a file
+ * "t:k,t1-t2:k,..." presses key k (u d l r a b) during tick t or ticks t1..t2. ACESPEEDER_RATE (or a file
  * rate.txt) logs ticks and frames per second to stderr or rate.log. */
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,9 +39,12 @@ static void scripted_keys(void)
 {
 	static const char names[] = "udrlab";
 	for (const char *p = g_keys; p && *p;) {
-		int t = atoi(p);
-		const char *c = strchr(p, ':');
-		if (c && t == g_tick && strchr(names, c[1])) {
+		int t = atoi(p), t2 = t;
+		const char *c = strchr(p, ':'), *dash = strchr(p, '-');
+		if (dash && c && dash < c) {
+			t2 = atoi(dash + 1);
+		}
+		if (c && g_tick >= t && g_tick <= t2 && strchr(names, c[1])) {
 			g_input[strchr(names, c[1]) - names] = 1;
 		}
 		p = strchr(p, ',');

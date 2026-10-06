@@ -9,6 +9,7 @@ static const char *const k_wavs[12] = {
 };
 static int g_handles[12];
 static int g_loaded;
+int g_soundOn = 1;
 
 void Sound_LoadAll(void)
 {
@@ -18,8 +19,8 @@ void Sound_LoadAll(void)
 	g_loaded = 1;
 }
 
-void Sound_Play(int id) { if (g_loaded) snd_play(g_handles[id], 0); }
-void Sound_PlayLoop(int id) { if (g_loaded) snd_play(g_handles[id], 1); }
-void Sound_Stop(int id) { if (g_loaded) snd_stop(g_handles[id]); }
-void Sound_SetPan(int id, int pan) { if (g_loaded) snd_set_pan(g_handles[id], pan); }
-void Sound_SetFreq(int id, int hz) { if (g_loaded) snd_set_freq(g_handles[id], hz); }
+void Sound_Play(int id) { if (g_loaded && g_soundOn) snd_play(g_handles[id], 0); }
+void Sound_PlayLoop(int id) { if (g_loaded && g_soundOn) snd_play(g_handles[id], 1); }
+void Sound_Stop(int id) { if (g_loaded && g_soundOn) snd_stop(g_handles[id]); }
+void Sound_SetPan(int id, int pan) { if (g_loaded && g_soundOn) snd_set_pan(g_handles[id], pan); }
+void Sound_SetFreq(int id, int hz) { if (g_loaded && g_soundOn) snd_set_freq(g_handles[id], hz); }

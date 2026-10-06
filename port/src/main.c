@@ -8,7 +8,8 @@
  *
  * Debugging: ACESPEEDER_SHOTS="t1,t2,..." (or the same list in a file shots.txt
  * in the data folder, for the PSP) runs one logic tick per frame without waiting,
- * saves shot_<tick>.ppm at those ticks and quits after the last. */
+ * saves shot_<tick>.ppm at those ticks and quits after the last. ACESPEEDER_KEYS=
+ * "t:k,t:k,..." presses key k (u d l r a b) during tick t. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,6 +19,7 @@
 #include "game/machine.h"
 #include "game/race.h"
 #include "game/save.h"
+#include "game/menu.h"
 #include "game/title.h"
 #include "platform/platform.h"
 
@@ -29,11 +31,30 @@ static void start_race(void)
 	g_race.state = 20;
 }
 
+static const char *g_keys; /* scripted key presses for debugging */
+static int g_tick;
+
+static void scripted_keys(void)
+{
+	static const char names[] = "udrlab";
+	for (const char *p = g_keys; p && *p;) {
+		int t = atoi(p);
+		const char *c = strchr(p, ':');
+		if (c && t == g_tick && strchr(names, c[1])) {
+			g_input[strchr(names, c[1]) - names] = 1;
+		}
+		p = strchr(p, ',');
+		p = p ? p + 1 : NULL;
+	}
+}
+
 static void tick(void)
 {
 	memcpy(g_inputPrev, g_input, sizeof(g_input));
 	memset(g_input, 0, sizeof(g_input));
 	plat_read_input(g_input);
+	g_tick++;
+	scripted_keys();
 	switch (g_gameState) {
 	case GS_RACE:
 		Race_Update(&g_race);
@@ -42,9 +63,13 @@ static void tick(void)
 		Title_Update(&g_title);
 		break;
 	case GS_MENU:
+		Menu_Update(&g_menu);
+		break;
+	case GS_DEMO:
 	case GS_ENDING:
-		/* the menus are not ported yet: race the same course again */
-		start_race();
+		/* not ported yet: back to the title */
+		g_title.state = 20;
+		g_gameState = GS_TITLE;
 		break;
 	}
 }
@@ -56,6 +81,9 @@ static void render(void)
 	}
 	else if (g_gameState == GS_TITLE && g_title.state == 10) {
 		Title_Render(&g_title);
+	}
+	else if (g_gameState == GS_MENU && g_menu.state == 10) {
+		Menu_Render(&g_menu);
 	}
 }
 
@@ -92,7 +120,11 @@ int main(int argc, char **argv)
 	if (start[3] >= 0) {
 		g_save.mode = (int16_t)start[3];
 	}
+	/* MainFrame's state 100 */
+	g_soundOn = g_save.opt2[1];
+	g_musicOn = g_save.opt2[0];
 	g_title.state = 20;
+	g_menu.state = 20;
 	g_race.state = 20;
 	if (start[0] > 0) {
 		start_race();
@@ -101,6 +133,7 @@ int main(int argc, char **argv)
 		g_gameState = GS_TITLE;
 	}
 
+	g_keys = getenv("ACESPEEDER_KEYS");
 	char list[256] = "";
 	const char *shots = getenv("ACESPEEDER_SHOTS");
 	FILE *sf = shots ? NULL : plat_open_data("shots.txt", "r");
@@ -164,6 +197,7 @@ int main(int argc, char **argv)
 		gfx_end_frame();
 	}
 	Title_Free(&g_title);
+	Menu_Free(&g_menu);
 	if (g_race.state == 10) {
 		Race_Cleanup(&g_race);
 	}

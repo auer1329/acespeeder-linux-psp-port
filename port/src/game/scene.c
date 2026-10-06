@@ -152,8 +152,13 @@ static void building_add(const CourseBuilding *b)
 	S.nbuild++;
 }
 
+int g_musicOn = 1;
+
 void Music_Play(int id)
 {
+	if (!g_musicOn) {
+		return;
+	}
 	mus_stop();
 	if (id >= 0 && id < 8) {
 		mus_play(k_music[id], 1);
@@ -162,6 +167,9 @@ void Music_Play(int id)
 
 void Music_Stop(void)
 {
+	if (!g_musicOn) {
+		return;
+	}
 	mus_stop();
 }
 

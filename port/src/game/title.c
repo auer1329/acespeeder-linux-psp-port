@@ -1,7 +1,7 @@
 /* Title sequence, game state 900: Title_Update (0x419f80) flies the camera
  * along a scripted path while the "Ace" and "Speeder" logo pieces scroll
  * past, then assembles the logo; Title_Render is 0x41bbf0. The timeline is
- * g_phaseTime, which starts at -20 and grows 1.65 per tick. */
+ * g_phaseTime, which starts at -20 and grows 1 per tick. */
 #include <math.h>
 
 #include "../engine/rm.h"
@@ -264,7 +264,7 @@ void Title_Update(Title *t)
 		title_free(t);
 		g_gameState = GS_MENU;
 	}
-	g_phaseTime = x87_add(g_phaseTime, 1.65);
+	g_phaseTime += 1.0;
 }
 
 void Title_Render(Title *t)

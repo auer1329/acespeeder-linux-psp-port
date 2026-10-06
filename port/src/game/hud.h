@@ -26,5 +26,6 @@ void HudMsg_Start(HudMsg *m, int id, float s);    /* 0x41d320 */
 void HudMsg_Goal(HudMsg *m, int id, float s);     /* 0x41d5a0 */
 void HudMsg_GameOver(HudMsg *m, int id, float s); /* 0x41d7c0 */
 void HudMsg_Wide(HudMsg *m, int id, float s);     /* 0x41d9c0 full-width cell */
+void HudMsg_Menu(HudMsg *m, float s);             /* 0x41ce90 the menu title logo */
 
 #endif

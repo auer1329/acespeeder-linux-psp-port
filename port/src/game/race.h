@@ -31,7 +31,7 @@ enum {
 };
 
 /* Game states (MainFrame, original 0x44a228). */
-enum { GS_INIT = 100, GS_MENU = 200, GS_RACE = 500, GS_ENDING = 700, GS_QUIT = 800, GS_TITLE = 900 };
+enum { GS_INIT = 100, GS_MENU = 200, GS_DEMO = 300, GS_RACE = 500, GS_ENDING = 700, GS_QUIT = 800, GS_TITLE = 900 };
 
 extern Race g_race;
 extern int32_t g_racePhase;
@@ -46,6 +46,7 @@ void Race_Cleanup(Race *r);  /* 0x414fe0 */
 void Race_Render(Race *r);   /* 0x412f40 draws the race and its HUD */
 
 
+extern int g_musicOn;        /* 0x452dfc, the music option */
 void Music_Play(int id);     /* 0x41c510 */
 void Music_Stop(void);       /* 0x41c540 */
 

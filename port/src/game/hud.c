@@ -165,3 +165,30 @@ void HudMsg_Wide(HudMsg *m, int id, float s)
 	}
 	fill(m, cx, cy, w, h, id, s < 1.0f ? 200 : (int)DMUL(x87_add(2.0, -(double)s), 200.0), 1.0f);
 }
+
+/* 0x41ce90: the "AceSpeeder!" logo of the menu's title screen (top half of
+ * ace.bmp), swelling in over s = 0..1 and then pulsing. */
+void HudMsg_Menu(HudMsg *m, float s)
+{
+	int grey = 255, w, h = 40;
+	if (s < 1.0f) {
+		grey = (int)(s * 255.0f);
+		w = (int)(cos(s * 7.0) * 50.0 + 275.0);
+		double g = 1.0 - s;
+		h = (int)(g * g * g * 120.0 + 40.0);
+	}
+	else {
+		w = (int)(cos(s * 7.0) * 50.0 + 275.0);
+	}
+	uint32_t c = 0x80000000u | (uint32_t)(grey & 0xff) << 16 | (uint32_t)(grey & 0xff) << 8 | (uint32_t)(grey & 0xff);
+	const float x[4] = {(float)(320 - w), (float)(320 + w), (float)(320 + w), (float)(320 - w)};
+	const float y[4] = {80.0f, 80.0f, (float)(h + 120), (float)(h + 120)};
+	const float tu[4] = {0.0f, 1.0f, 1.0f, 0.0f}, tv[4] = {0.0f, 0.0f, 0.5f, 0.5f};
+	for (int i = 0; i < 4; i++) {
+		m->v[i].sx = x[i];
+		m->v[i].sy = y[i];
+		m->v[i].color = c;
+		m->v[i].tu = tu[i];
+		m->v[i].tv = tv[i];
+	}
+}

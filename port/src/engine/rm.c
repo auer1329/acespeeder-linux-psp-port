@@ -408,17 +408,6 @@ RMTexture *rm_texture_load(const char *name)
 		t->img.px = malloc(4);
 		t->img.px[0] = 0xffffffff;
 	}
-	/* Retained Mode puts the first stored row of the bottom-up DIB at v = 0, so
-	 * mesh textures appear upside down compared with the picture (the game's
-	 * bitmaps with text, such as pro.bmp and title.bmp, are stored flipped). */
-	for (int y = 0; y < t->img.h / 2; y++) {
-		uint32_t *a = t->img.px + (size_t)y * t->img.w, *b = t->img.px + (size_t)(t->img.h - 1 - y) * t->img.w;
-		for (int x = 0; x < t->img.w; x++) {
-			uint32_t c = a[x];
-			a[x] = b[x];
-			b[x] = c;
-		}
-	}
 	t->next_cached = g_tex_cache;
 	g_tex_cache = t;
 	return t;
@@ -663,7 +652,10 @@ int rm_mb_load(RMMeshBuilder *mb, const char *name)
 	for (int i = 0; i < x.nverts; i++) {
 		int k = rm_mb_add_vertex(mb, x.verts[i].x, x.verts[i].y, x.verts[i].z);
 		if (x.uv) {
-			rm_mb_set_texture_coordinates(mb, k, x.uv[i][0], x.uv[i][1]);
+			/* Texture v runs the other way in the game's .x files: the bitmaps of
+			 * text such as pro.bmp and title.bmp are stored upside down to match,
+			 * while the course meshes built in code use the bitmaps as they are. */
+			rm_mb_set_texture_coordinates(mb, k, x.uv[i][0], 1.0f - x.uv[i][1]);
 		}
 	}
 	for (int i = 0; i < x.nnormals; i++) {

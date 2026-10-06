@@ -100,6 +100,7 @@ Vec3 Pickups_PathPoint(float t2, int idx, TrackPos start);           /* 0x419550
 int Sparks_Add(Vec3 v);                                              /* 0x410e50 */
 
 /* sound effects (Sound_* in the original, ids in re/NOTES.md) */
+extern int g_soundOn; /* 0x45a604, the sound option */
 void Sound_Play(int id);
 void Sound_PlayLoop(int id);
 void Sound_Stop(int id);

@@ -29,6 +29,12 @@ float x87_muld(double a, double c)
 	return round_exact(p, fma(a, c, -p));
 }
 
+float x87_div(double a, double c)
+{
+	double q = a / c;
+	return round_exact(q, fma(-q, c, a) / c); /* the remainder breaks ties exactly */
+}
+
 float x87_add(double a, double c)
 {
 	double s = (double)a + c;

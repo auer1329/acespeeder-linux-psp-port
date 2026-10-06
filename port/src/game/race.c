@@ -326,6 +326,78 @@ static int racing(Race *r)
 	return 0;
 }
 
+void Race_SetupStart(Race *r)
+{
+	r->state = 10;
+	g_racePhase = PH_SETUP;
+	g_phaseTime = 0.0;
+	r->sub_time = 0.0;
+	r->sub = 0;
+	r->choice = 0;
+	if (g_save.mode == MODE_GRANDPRIX || g_save.mode == MODE_TIMEATTACK) {
+		Replay_Clear(&g_replay);
+	}
+	else if (g_save.mode == MODE_REPLAY) {
+		Replay_Load(&g_replay, g_save.stage, g_save.course);
+		g_save.machine = g_replay.machine;
+	}
+}
+
+/* Place the opponents on a grid between just behind the player's start and a
+ * point ahead that depends on how tight the time limit is. */
+void Race_SetupGrid(void)
+{
+	Track *t = &g_track;
+	float q = x87_add(1.0, -(double)x87_div(t->reftime, t->f15d4));
+	float front = x87_add(DMUL(x87_mul(x87_mul(q, (double)(t->n + 1)), (double)t->laps), 0.75), t->f15d0);
+	float back = DADD(t->f15d0, 0.5);
+	t->reftime = x87_muld(t->reftime, 1.5);
+	Machine *p = &g_machines[0];
+	Machine_Init(p);
+	p->is_ai = 0;
+	p->tp.seg = (int16_t)ftol(floor((double)t->f15d0));
+	p->tp.t = (float)((double)t->f15d0 - floor((double)t->f15d0));
+	TrackPos_Update(&p->tp);
+	p->pos = Track_Point(t, p->tp);
+	p->rot = Track_Frame(t, p->tp);
+	p->power = g_save.power;
+	for (int k = 0; k < NUM_MACHINES - 1; k++) {
+		Machine *m = &g_machines[k + 1];
+		Machine_Init(m);
+		m->is_ai = 1;
+		m->lap = 0;
+		float a = x87_muld((double)k, 0.16666666666666666);
+		float s = x87_add(x87_mul(x87_add(1.0, -(double)a), back), x87_mul(a, front));
+		m->tp.seg = (int16_t)ftol(floor((double)s));
+		m->tp.t = (float)((double)s - floor((double)s));
+		while (m->tp.seg > t->n) {
+			m->tp.seg = (int16_t)(m->tp.seg - t->n - 1);
+			m->lap++;
+		}
+		/* step out of type 6 segments; the original wraps with the lap count
+		 * where it means the segment count */
+		while (t->ptype[m->tp.seg] == 6) {
+			m->tp.t = DADD(m->tp.t, 0.2);
+			if (m->tp.t > 1.0f) {
+				m->tp.seg++;
+				m->tp.t = DADD(m->tp.t, -1.0);
+				if (m->tp.seg > t->n) {
+					m->lap++;
+					m->tp.seg = (int16_t)(m->tp.seg + (-1 - t->laps));
+				}
+			}
+		}
+		float d = (float)m->tp.seg + m->tp.t - ((float)p->tp.seg + p->tp.t);
+		if (d < 0.05f && d > -0.05f) {
+			m->tp.t = DADD(m->tp.t, -0.1);
+		}
+		TrackPos_Update(&m->tp);
+		m->pos = Track_Point(t, m->tp);
+		m->rot = Track_Frame(t, m->tp);
+	}
+	Camera_Init(&g_camera);
+}
+
 void Race_Update(Race *r)
 {
 	if (r->state == 20) {

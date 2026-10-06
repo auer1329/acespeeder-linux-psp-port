@@ -53,6 +53,7 @@ int crt_rand(void);
  * 24-bit precision control: the exact result rounded once to float. */
 float x87_mul(float a, double c);
 float x87_add(double a, double c);
+float x87_div(double a, double c);
 float x87_muld(double a, double c); /* both operands double, e.g. a qword global */
 #define DMUL(a, c) x87_mul((a), (c))
 #define DADD(a, c) x87_add((a), (c))

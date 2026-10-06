@@ -38,6 +38,9 @@ extern int32_t g_gameState;
 
 void Race_Update(Race *r);   /* 0x411530 */
 void Race_Setup(Race *r);    /* 0x417070 builds the race scene */
+/* The game-state part of Race_Setup, before and after the course is built. */
+void Race_SetupStart(Race *r);
+void Race_SetupGrid(void);
 void Race_Cleanup(Race *r);  /* 0x414fe0 */
 
 /* Shutter that closes over the view (original 0x44eeb8). */

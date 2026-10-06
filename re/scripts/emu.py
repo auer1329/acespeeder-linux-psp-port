@@ -113,8 +113,9 @@ class Emu:
     # Direct3D has created its device the game runs with 0x07F (24-bit precision).
     fpcw = 0x27F
 
-    def call(self, addr, args=(), ecx=None, edx=None, max_insns=50_000_000):
-        """Call a function; args are 32-bit ints or Python floats (passed as float32)."""
+    def call(self, addr, args=(), ecx=None, edx=None, max_insns=50_000_000, stop=None):
+        """Call a function; args are 32-bit ints or Python floats (passed as float32).
+        With stop, emulation ends when that instruction is reached (partial run)."""
         esp = STACK_TOP - 0x1000
         words = []
         for a in args:
@@ -131,7 +132,14 @@ class Emu:
             self.uc.reg_write(UC_X86_REG_ECX, ecx)
         if edx is not None:
             self.uc.reg_write(UC_X86_REG_EDX, edx)
-        self.uc.emu_start(addr, RET_MAGIC, count=max_insns)
+        hook = None
+        if stop is not None:
+            hook = self.uc.hook_add(UC_HOOK_CODE, lambda uc, a, size, ud: uc.emu_stop(), begin=stop, end=stop)
+        try:
+            self.uc.emu_start(addr, RET_MAGIC, count=max_insns)
+        finally:
+            if hook is not None:
+                self.uc.hook_del(hook)
         return self.uc.reg_read(UC_X86_REG_EAX)
 
     # --- diffing

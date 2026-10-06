@@ -158,11 +158,21 @@ STRUCT_ARG = re.compile(r"(?:( *)((?:p|m|v|a|b|from|to)(?:_[0-9a-f]+)?)\.[\w.\[\
 LOOP9 = re.compile(r"^( *)for \((\w+) = (9|0x24|36); (?:\w+ = [^,;]+, )?\2 != 0; \2 = \2 \+ -1\) \{$")
 
 
+ASSIGN = re.compile(r"^ *(\w+) = (.+);$")
+STACKREF = re.compile(r"^\(?(?:\([\w ]+\*+\))?&stack0x([0-9a-f]+)\)?$")
+
+
 def condense_loops(text):
-    """Collapse any 9-iteration word-copy loop (struct copies) whose body is 2-4 plain assignments."""
+    """Collapse 9-word struct-copy loops. When the copy targets an outgoing stack slot,
+    remember what was copied there so struct arguments built from it can be named."""
     lines = text.split("\n")
     out, i = [], 0
+    last = {}      # pointer variable -> last assigned expression
+    slots = {}     # stack offset (int) -> description of the copied struct
     while i < len(lines):
+        a = ASSIGN.match(lines[i])
+        if a:
+            last[a.group(1)] = a.group(2)
         m = LOOP9.match(lines[i])
         if m:
             j = i + 1
@@ -173,21 +183,46 @@ def condense_loops(text):
             simple = (2 <= len(body) <= 4 and j < len(lines) and
                       all(re.fullmatch(r"[\w\->\.\[\]\*\(\) ]+ = [\w\->\.\[\]\*\(\)+ ]+;", b) for b in body))
             if simple:
-                dst = body[0].split(" = ")[0]
-                src = body[0].split(" = ")[1].rstrip(";")
+                dstv = body[0].split(" = ")[0].lstrip("*").strip()
+                srcv = re.sub(r"->m\[0\]$|\.m\[0\]$", "", body[0].split(" = ")[1].rstrip(";").lstrip("*").strip())
+                srcv = re.sub(r"^\*?\([\w ]+\*+\)", "", srcv).lstrip("*")
+                src = last.get(srcv, srcv)
+                dst = last.get(dstv, dstv)
+                st = STACKREF.match(dst.strip())
+                if st:
+                    slots[int(st.group(1), 16)] = src
                 out.append(f"{m.group(1)}/* copy 9 words: {dst} <- {src} */")
                 i = j + 1
                 continue
         out.append(lines[i])
         i += 1
-    return "\n".join(out)
+    return "\n".join(out), slots
+
+
+INSTACK = re.compile(r"in_stack_([0-9a-f]{8})")
+
+
+def name_struct_args(text, slots):
+    """Replace `m_01.m[0] = in_stack_...;` runs by `/* m_01 = <what was copied there> */`."""
+    def repl(m):
+        block = m.group(0)
+        offs = [int(x, 16) for x in INSTACK.findall(block)]
+        lines = block.rstrip("\n").split("\n")
+        plain = [l for l in lines if "in_stack_" not in l]
+        if offs:
+            base = min(offs)
+            src = next((slots[o] for o in sorted(slots) if base - 4 <= o <= base), None)
+            note = f"{m.group(1)}/* {m.group(2)} = {src if src else 'stack copy'} */"
+            return "\n".join([note] + plain) + "\n"
+        return block
+    return STRUCT_ARG.sub(repl, text)
 
 
 def condense(text):
-    text = condense_loops(text)
+    text, slots = condense_loops(text)
+    text = name_struct_args(text, slots)
     text = COPY_FOR.sub(lambda m: f"{m.group(1)}/* copy {m.group(3)} words: {m.group(4)} <- {m.group(5)} */\n", text)
     text = COPY_WHILE.sub(lambda m: f"{m.group(1)}/* copy {m.group(2)} words: {m.group(3)} <- {m.group(4)} */\n", text)
-    text = STRUCT_ARG.sub(lambda m: f"{m.group(1)}/* {m.group(2)} = struct arg built from the stack copy */\n", text)
     return text
 
 

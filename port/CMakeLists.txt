@@ -25,9 +25,18 @@ target_compile_options(engine PRIVATE -Wall -Wextra -Wno-unused-parameter)
 # stb_vorbis is third-party code: don't drown our warnings in its own
 set_source_files_properties(src/platform/mixer.c PROPERTIES COMPILE_OPTIONS "-w")
 
-add_library(game STATIC src/game/gmath.c src/game/track.c)
+set(GAME_SRC src/game/gmath.c src/game/track.c src/game/machine.c)
+# The original's physics ran in single precision: no fused/contracted operations.
+set(GAME_FLAGS -Wall -Wextra -Wno-unused-parameter -ffp-contract=off)
+
+add_library(game STATIC ${GAME_SRC} src/game/sound.c)
 target_link_libraries(game PUBLIC engine)
-target_compile_options(game PRIVATE -Wall -Wextra -Wno-unused-parameter)
+target_compile_options(game PRIVATE ${GAME_FLAGS})
+
+# Game logic as a shared library for the differential tests in re/scripts.
+add_library(gametest SHARED ${GAME_SRC} src/tools/testlib.c src/engine/rmath.c)
+target_compile_options(gametest PRIVATE ${GAME_FLAGS} -DGAME_TESTLIB)
+target_link_libraries(gametest PRIVATE m)
 
 add_executable(viewer src/tools/viewer.c)
 target_link_libraries(viewer engine)

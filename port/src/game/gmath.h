@@ -49,6 +49,11 @@ float Wave_EaseIn(float x);                                      /* 0x41ce30 */
 void crt_srand(uint32_t seed);
 int crt_rand(void);
 
+/* x87 ops with a double operand (constants the original keeps as qwords) under
+ * 24-bit precision control: the exact result rounded once to float. */
+float x87_mul(float a, double c);
+float x87_add(float a, double c);
+
 /* MSVC's __ftol truncates toward zero. */
 static inline int ftol(double v) { return (int)v; }
 

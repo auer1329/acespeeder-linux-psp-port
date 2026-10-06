@@ -20,6 +20,7 @@ EXE = Path(__file__).resolve().parent.parent.parent / "game" / "AceSpeeder.exe"
 STACK_TOP = 0x00200000
 STACK_SIZE = 0x00100000
 RET_MAGIC = 0x00FFF000
+SCRATCH = 0x00300000  # 64 KB free for callers (output buffers etc.)
 
 
 class EmuError(Exception):
@@ -38,6 +39,7 @@ class Emu:
         self.uc.mem_map(self.base, (image_size + 0xFFF) & ~0xFFF)
         self.uc.mem_map(STACK_TOP - STACK_SIZE, STACK_SIZE)
         self.uc.mem_map(RET_MAGIC & ~0xFFF, 0x1000)
+        self.uc.mem_map(SCRATCH, 0x10000)
         self.sections = []
         sec = pe + 24 + optsz
         for i in range(nsec):
@@ -97,7 +99,7 @@ class Emu:
                 self.calls.append((addr, ecx, args))
             if fn:
                 ret = fn(self, ecx, args)
-            uc.reg_write(UC_X86_REG_EAX, ret & 0xFFFFFFFF)
+            uc.reg_write(UC_X86_REG_EAX, (ret or 0) & 0xFFFFFFFF)
             pop = 4 + (4 * nargs if conv in ("stdcall", "thiscall") else 0)
             uc.reg_write(UC_X86_REG_ESP, esp + pop)
             uc.reg_write(UC_X86_REG_EIP, retaddr)
@@ -107,6 +109,10 @@ class Emu:
         raise EmuError(f"invalid memory access at {addr:#x} (eip {eip:#x})")
 
     # --- calls
+    # x87 control word used for calls: 0x27F is the Win32 default (53-bit), but once
+    # Direct3D has created its device the game runs with 0x07F (24-bit precision).
+    fpcw = 0x27F
+
     def call(self, addr, args=(), ecx=None, edx=None, max_insns=50_000_000):
         """Call a function; args are 32-bit ints or Python floats (passed as float32)."""
         esp = STACK_TOP - 0x1000
@@ -120,7 +126,7 @@ class Emu:
         esp -= len(frame)
         self.write(esp, frame)
         self.uc.reg_write(UC_X86_REG_ESP, esp)
-        self.uc.reg_write(UC_X86_REG_FPCW, 0x27F)  # Win32 default: 53-bit precision, all exceptions masked
+        self.uc.reg_write(UC_X86_REG_FPCW, self.fpcw)
         if ecx is not None:
             self.uc.reg_write(UC_X86_REG_ECX, ecx)
         if edx is not None:

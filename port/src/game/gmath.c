@@ -2,6 +2,35 @@
 
 #include <math.h>
 
+/* Round p+e (the exact value, e the tiny remainder) to float with a single rounding:
+ * (float)p alone can double-round when p lies exactly between two floats. */
+static float round_exact(double p, double e)
+{
+	float r = (float)p;
+	double d = (double)r - p;
+	if (e != 0.0 && d != 0.0) {
+		float other = nextafterf(r, d > 0.0 ? -INFINITY : INFINITY);
+		if ((double)other - p == -d && (e > 0.0) == (other > r)) {
+			r = other;
+		}
+	}
+	return r;
+}
+
+float x87_mul(float a, double c)
+{
+	double p = (double)a * c;
+	return round_exact(p, fma((double)a, c, -p));
+}
+
+float x87_add(float a, double c)
+{
+	double s = (double)a + c;
+	double bb = s - (double)a; /* TwoSum: exact error of the addition */
+	double e = ((double)a - (s - bb)) + (c - bb);
+	return round_exact(s, e);
+}
+
 void TrackPos_Update(TrackPos *p)
 {
 	p->t2 = p->t * p->t;
@@ -33,7 +62,8 @@ Mat3 Mat3_Mul(Mat3 a, Mat3 b)
 	Mat3 r;
 	for (int i = 0; i < 3; i++) {
 		for (int j = 0; j < 3; j++) {
-			r.m[i * 3 + j] = a.m[i * 3] * b.m[j] + a.m[i * 3 + 1] * b.m[3 + j] + a.m[i * 3 + 2] * b.m[6 + j];
+			/* summation order of the original: third term first */
+			r.m[i * 3 + j] = (b.m[6 + j] * a.m[i * 3 + 2] + b.m[3 + j] * a.m[i * 3 + 1]) + b.m[j] * a.m[i * 3];
 		}
 	}
 	return r;
@@ -44,8 +74,8 @@ Mat3 Mat3_MulT(Mat3 a, Mat3 b)
 	Mat3 r;
 	for (int i = 0; i < 3; i++) {
 		for (int j = 0; j < 3; j++) {
-			r.m[i * 3 + j] = a.m[i * 3] * b.m[j * 3] + a.m[i * 3 + 1] * b.m[j * 3 + 1] +
-			                 a.m[i * 3 + 2] * b.m[j * 3 + 2];
+			r.m[i * 3 + j] = (b.m[j * 3 + 2] * a.m[i * 3 + 2] + b.m[j * 3 + 1] * a.m[i * 3 + 1]) +
+			                 b.m[j * 3] * a.m[i * 3];
 		}
 	}
 	return r;
@@ -84,7 +114,8 @@ Vec3 Vec3_Add(Vec3 a, Vec3 b)
 Mat3 Mat3_Rotate(float angle, int axis)
 {
 	Mat3 m = Mat3_Identity();
-	float c = cosf(angle), s = sinf(angle);
+	/* fsin/fcos are not affected by the x87 precision setting: round once to float */
+	float c = (float)cos((double)angle), s = (float)sin((double)angle);
 	if (axis == 0) {
 		m.m[4] = c, m.m[5] = s, m.m[7] = -s, m.m[8] = c;
 	}
@@ -116,19 +147,19 @@ Mat3 Mat3_LookDir(Vec3 from, Vec3 to)
 
 Vec3 Mat3_MulVec(Vec3 v, Mat3 m)
 {
-	return v3(m.m[0] * v.x + m.m[3] * v.y + m.m[6] * v.z,
-	          m.m[1] * v.x + m.m[4] * v.y + m.m[7] * v.z,
-	          m.m[2] * v.x + m.m[5] * v.y + m.m[8] * v.z);
+	return v3((m.m[6] * v.z + m.m[3] * v.y) + m.m[0] * v.x,
+	          (m.m[7] * v.z + m.m[4] * v.y) + m.m[1] * v.x,
+	          (m.m[8] * v.z + m.m[5] * v.y) + m.m[2] * v.x);
 }
 
 Vec3 Mat3_MulVecT(Vec3 v, Mat3 m)
 {
-	return v3(m.m[0] * v.x + m.m[1] * v.y + m.m[2] * v.z,
-	          m.m[3] * v.x + m.m[4] * v.y + m.m[5] * v.z,
-	          m.m[6] * v.x + m.m[7] * v.y + m.m[8] * v.z);
+	return v3((m.m[2] * v.z + m.m[1] * v.y) + m.m[0] * v.x,
+	          (m.m[5] * v.z + m.m[4] * v.y) + m.m[3] * v.x,
+	          (m.m[8] * v.z + m.m[7] * v.y) + m.m[6] * v.x);
 }
 
-static uint32_t g_holdrand = 1;
+uint32_t g_holdrand = 1; /* MSVC rand() state (0x44a82c), shared for tests */
 
 void crt_srand(uint32_t seed)
 {

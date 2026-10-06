@@ -15,10 +15,12 @@ _Static_assert(offsetof(Track, radius) == 0x1740, "Track layout");
 _Static_assert(offsetof(Track, laps) == 0x1a14, "Track layout");
 _Static_assert(offsetof(Track, reftime) == 0x1a18, "Track layout");
 _Static_assert(sizeof(Track) == 0x1a28, "Track layout");
-_Static_assert(sizeof(Pickups) == 0x600, "Pickups layout");
+_Static_assert(offsetof(Pickups, type) == 0x144, "Pickups layout");
+_Static_assert(offsetof(Pickups, dur) == 0x164, "Pickups layout");
+_Static_assert(offsetof(Pickups, from) == 0x1a4, "Pickups layout");
+_Static_assert(offsetof(Pickups, to) == 0x3e4, "Pickups layout");
 
 Track g_track;
-Pickups g_pickups;
 
 /* Segment frame of the track at p: forward from the Bezier tangent, right kept
  * horizontal, then rolled by the interpolated bank angle. */
@@ -35,7 +37,7 @@ static Mat3 segment_frame(const Track *trk, const TrackPos *p)
 	float gz = (trk->pz[i] - trk->cz[i]) * p->omt;
 	fz = (fz + fz) - (gz + gz);
 	Mat3 f = Mat3_Identity();
-	float len = sqrtf(fx * fx + fy * fy + fz * fz);
+	float len = sqrtf(fz * fz + fy * fy + fx * fx); /* summation order of the original */
 	float dx = 0, dy = 0, dz = 0;
 	if (len != 0.0f) {
 		dx = fx / len, dy = fy / len, dz = fz / len;
@@ -51,7 +53,7 @@ static Mat3 segment_frame(const Track *trk, const TrackPos *p)
 	float bank = (trk->bank[i] - trk->cbank[i]) * p->omt2 + (trk->bank[i + 1] - trk->cbank[i]) * p->t2 +
 	             trk->cbank[i];
 	Mat3 roll = Mat3_Identity();
-	float c = cosf(bank), s = sinf(bank);
+	float c = (float)cos((double)bank), s = (float)sin((double)bank);
 	roll.m[0] = c, roll.m[1] = s, roll.m[3] = -s, roll.m[4] = c;
 	return Mat3_Mul(roll, f);
 }
@@ -65,13 +67,15 @@ Vec3 Track_Point(const Track *trk, TrackPos p)
 	float lx = (p.omt * trk->ax[k] + p.t * trk->bx[k]) * p.omu + (p.omt * trk->ax[k + 1] + p.t * trk->bx[k + 1]) * p.u;
 	float ly = (p.omt * trk->ay[k] + p.t * trk->by[k]) * p.omu + (p.omt * trk->ay[k + 1] + p.t * trk->by[k + 1]) * p.u +
 	           p.h;
+	/* base point on the Bezier first, then the cross-section offset (operation order
+	 * of the original keeps results bit-identical) */
+	float bx_ = ((trk->px[i] - trk->cx[i]) * p.omt2 + (trk->px[i + 1] - trk->cx[i]) * p.t2) + trk->cx[i];
+	float by_ = ((trk->py[i] - trk->cy[i]) * p.omt2 + (trk->py[i + 1] - trk->cy[i]) * p.t2) + trk->cy[i];
+	float bz_ = ((trk->pz[i] - trk->cz[i]) * p.omt2 + (trk->pz[i + 1] - trk->cz[i]) * p.t2) + trk->cz[i];
 	Vec3 out;
-	out.x = lx * r.m[0] + ly * r.m[3] + (trk->px[i + 1] - trk->cx[i]) * p.t2 + (trk->px[i] - trk->cx[i]) * p.omt2 +
-	        trk->cx[i];
-	out.y = lx * r.m[1] + ly * r.m[4] + (trk->py[i + 1] - trk->cy[i]) * p.t2 + (trk->py[i] - trk->cy[i]) * p.omt2 +
-	        trk->cy[i];
-	out.z = lx * r.m[2] + ly * r.m[5] + (trk->pz[i + 1] - trk->cz[i]) * p.t2 + (trk->pz[i] - trk->cz[i]) * p.omt2 +
-	        trk->cz[i];
+	out.x = (ly * r.m[3] + lx * r.m[0]) + bx_;
+	out.y = (ly * r.m[4] + lx * r.m[1]) + by_;
+	out.z = (ly * r.m[5] + lx * r.m[2]) + bz_;
 	return out;
 }
 
@@ -82,6 +86,7 @@ Mat3 Track_Frame(const Track *trk, TrackPos p)
 }
 
 /* ------------------------------------------------------------- data files */
+#ifndef GAME_TESTLIB
 
 static int rd(FILE *f, void *p, size_t n)
 {
@@ -108,7 +113,8 @@ int Track_Load(int stage, int course, TrackMeshes *out)
 	if (rd(f, &len, 4) || len != sizeof(Track) || rd(f, &g_track, sizeof(Track))) {
 		goto done;
 	}
-	if (rd(f, &len, 4) || len != sizeof(Pickups) || rd(f, &g_pickups, sizeof(Pickups))) {
+	memset(&g_pickups, 0, sizeof(g_pickups));
+	if (rd(f, &len, 4) || len > sizeof(Pickups) || rd(f, &g_pickups, len)) {
 		goto done;
 	}
 	out->nseg = (int)nseg;
@@ -166,3 +172,4 @@ void Track_FreeMeshes(TrackMeshes *m)
 	RM_RELEASE(m->tex);
 	m->nseg = 0;
 }
+#endif /* GAME_TESTLIB */

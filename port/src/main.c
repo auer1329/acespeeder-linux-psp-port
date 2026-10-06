@@ -209,10 +209,11 @@ int main(int argc, char **argv)
 		FILE *log = plat_open_save("ticks.log", "w");
 		for (int t = 1; *shots && !plat_should_quit(); t++) {
 			tick();
-			if (log && t % 50 == 0) {
-				fprintf(log, "%d: state %d race %d phase %d time %.3f sub %d %.3f lap %d s %.3f\n", t,
+			if (log && (t % 50 == 0 || (g_machines[0].sp_active && g_machines[0].sp_timer < 1.0f))) {
+				fprintf(log, "%d: state %d race %d phase %d time %.3f sub %d %.3f lap %d s %.3f sp %d/%d %.1f\n", t,
 				        (int)g_gameState, g_race.state, (int)g_racePhase, g_phaseTime, g_race.sub, g_race.sub_time,
-				        g_machines[0].lap, g_machines[0].tp.seg + g_machines[0].tp.t);
+				        g_machines[0].lap, g_machines[0].tp.seg + g_machines[0].tp.t, g_machines[0].sp_active,
+				        g_machines[0].sp_kind, g_machines[0].sp_timer);
 			}
 			gfx_begin_frame();
 			render();

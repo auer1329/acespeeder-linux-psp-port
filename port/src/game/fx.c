@@ -83,11 +83,15 @@ static void load_mesh(FxMesh *m, const char *name)
 	xmesh_free(&x);
 }
 
+/* Sets the drawn vertices from the scaled model. The source positions stay
+ * as loaded: the animated effects rebuild their vertices from them every
+ * frame with their own scale (only the engine flame keeps these). */
 static void scale_mesh(FxMesh *m, float sx, float sy, float sz, float oy, float oz)
 {
 	for (int i = 0; i < m->nverts; i++) {
-		m->pos[i] = v3(m->pos[i].x * sx, m->pos[i].y * sy + oy, m->pos[i].z * sz + oz);
-		m->v[i].x = m->pos[i].x, m->v[i].y = m->pos[i].y, m->v[i].z = m->pos[i].z;
+		m->v[i].x = m->pos[i].x * sx;
+		m->v[i].y = m->pos[i].y * sy + oy;
+		m->v[i].z = m->pos[i].z * sz + oz;
 	}
 }
 

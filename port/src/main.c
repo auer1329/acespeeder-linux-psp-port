@@ -10,7 +10,8 @@
  * in the data folder, for the PSP) runs one logic tick per frame without waiting,
  * saves shot_<tick>.ppm at those ticks and quits after the last. ACESPEEDER_KEYS=
  * "t:k,t1-t2:k,..." presses key k (u d l r a b) during tick t or ticks t1..t2. ACESPEEDER_RATE (or a file
- * rate.txt) logs ticks and frames per second to stderr or rate.log. */
+ * rate.txt) logs ticks and frames per second to stderr or rate.log. ACESPEEDER_STATE
+ * starts in another game state, e.g. 700 for the staff roll. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,6 +21,7 @@
 #include "game/machine.h"
 #include "game/race.h"
 #include "game/save.h"
+#include "game/ending.h"
 #include "game/menu.h"
 #include "game/title.h"
 #include "platform/platform.h"
@@ -69,9 +71,11 @@ static void tick(void)
 	case GS_MENU:
 		Menu_Update(&g_menu);
 		break;
-	case GS_DEMO:
 	case GS_ENDING:
-		/* not ported yet: back to the title */
+		Ending_Update(&g_ending);
+		break;
+	case GS_DEMO:
+		/* the attract-mode race is not ported: back to the title */
 		g_title.state = 20;
 		g_gameState = GS_TITLE;
 		break;
@@ -88,6 +92,9 @@ static void render(void)
 	}
 	else if (g_gameState == GS_MENU && g_menu.state == 10) {
 		Menu_Render(&g_menu);
+	}
+	else if (g_gameState == GS_ENDING && g_ending.state == 10) {
+		Ending_Render(&g_ending);
 	}
 }
 
@@ -129,12 +136,16 @@ int main(int argc, char **argv)
 	g_musicOn = g_save.opt2[0];
 	g_title.state = 20;
 	g_menu.state = 20;
+	g_ending.state = 20;
 	g_race.state = 20;
 	if (start[0] > 0) {
 		start_race();
 	}
 	else {
 		g_gameState = GS_TITLE;
+	}
+	if (getenv("ACESPEEDER_STATE")) { /* debugging: start in another game state */
+		g_gameState = atoi(getenv("ACESPEEDER_STATE"));
 	}
 
 	g_keys = getenv("ACESPEEDER_KEYS");
@@ -220,6 +231,7 @@ int main(int argc, char **argv)
 	}
 	Title_Free(&g_title);
 	Menu_Free(&g_menu);
+	Ending_Free(&g_ending);
 	if (g_race.state == 10) {
 		Race_Cleanup(&g_race);
 	}

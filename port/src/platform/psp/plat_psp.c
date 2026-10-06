@@ -57,9 +57,17 @@ static void make_save_dir(void)
 	sceIoMkdir("save", 0777);
 }
 
+/* The data sits next to EBOOT.PBP (the working directory), or in a data/
+ * folder there. */
 FILE *plat_open_data(const char *name, const char *mode)
 {
-	return fopen(name, mode); /* cwd is the EBOOT folder */
+	FILE *f = fopen(name, mode);
+	if (!f) {
+		char p[256];
+		snprintf(p, sizeof(p), "data/%s", name);
+		f = fopen(p, mode);
+	}
+	return f;
 }
 
 FILE *plat_open_save(const char *name, const char *mode)
@@ -68,7 +76,7 @@ FILE *plat_open_save(const char *name, const char *mode)
 	snprintf(p, sizeof(p), "save/%s", name);
 	FILE *f = fopen(p, mode);
 	if (!f && mode[0] == 'r') {
-		f = fopen(name, mode); /* shipped defaults */
+		f = plat_open_data(name, mode); /* shipped defaults (replays, gamedata.dat) */
 	}
 	return f;
 }

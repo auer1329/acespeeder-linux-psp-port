@@ -82,6 +82,49 @@ static void tick(void)
 	}
 }
 
+/* Without the game data every screen would stay black: say what is missing. */
+static int check_data(void)
+{
+	static const char *const required[] = {"tt.x", "title.x", "machine1.x", "course1.bmp", "engine.wav",
+	                                       "track_1_1.bin"};
+	const char *missing[8];
+	int n = 0;
+	for (size_t i = 0; i < sizeof(required) / sizeof(required[0]); i++) {
+		FILE *f = plat_open_data(required[i], "rb");
+		if (f) {
+			fclose(f);
+		}
+		else {
+			missing[n++] = required[i];
+		}
+	}
+	if (n == 0) {
+		return 1;
+	}
+	while (!plat_should_quit()) {
+		gfx_begin_frame();
+		gfx_clear(0x000000, 1, 1);
+		gfx_begin_2d();
+		gfx_set_blend(GFX_BLEND_ALPHA);
+		font_draw(320, 60, 14, 0xffff60, FONT_CENTER, "AceSpeeder!: game files not found");
+		for (int i = 0; i < n; i++) {
+			font_draw(320, 120 + 34 * i, 12, 0xffffff, FONT_CENTER, missing[i]);
+		}
+		font_draw(320, 360, 10, 0xc0c0ff, FONT_CENTER, "Copy the whole folder made by tools/make_dist.sh");
+		font_draw(320, 390, 10, 0xc0c0ff, FONT_CENTER, "(dist/PSP/GAME/AceSpeeder), not only EBOOT.PBP.");
+		gfx_end_2d();
+		if (getenv("ACESPEEDER_SHOTS")) {
+			plat_screenshot("shot_missing.ppm");
+			gfx_end_frame();
+			break;
+		}
+		gfx_end_frame();
+		plat_sleep_ms(30);
+	}
+	plat_shutdown();
+	return 0;
+}
+
 static void render(void)
 {
 	if (g_gameState == GS_RACE && g_race.state == 10) {
@@ -105,6 +148,9 @@ int main(int argc, char **argv)
 	}
 	rm_init();
 	font_init();
+	if (!check_data()) {
+		return 1;
+	}
 	Sound_LoadAll();
 	Save_Defaults(&g_save);
 	Save_Load(&g_save);

@@ -20,8 +20,10 @@ soundfont (`/usr/share/sounds/sf2/FluidR3_GM.sf2`) for the music.
 This converts the data that needs it (the courses from the executable, the MIDI
 music to Ogg Vorbis, the menu icon), builds `EBOOT.PBP` and assembles
 `dist/PSP/GAME/AceSpeeder/`. Copy the `PSP` folder to the root of the Memory
-Stick, or the `AceSpeeder` folder into PPSSPP's `PSP/GAME`. Saves and replays go
-to `PSP/GAME/AceSpeeder/save/`.
+Stick, or the `AceSpeeder` folder into PPSSPP's `PSP/GAME`: the game needs all of
+its files, not only `EBOOT.PBP` (they may also go in a `data` folder next to it).
+If files are missing the game says which. Saves and replays go to
+`PSP/GAME/AceSpeeder/save/`.
 
 | PSP | Game |
 |---|---|

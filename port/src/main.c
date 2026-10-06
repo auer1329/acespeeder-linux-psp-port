@@ -9,7 +9,8 @@
  * Debugging: ACESPEEDER_SHOTS="t1,t2,..." (or the same list in a file shots.txt
  * in the data folder, for the PSP) runs one logic tick per frame without waiting,
  * saves shot_<tick>.ppm at those ticks and quits after the last. ACESPEEDER_KEYS=
- * "t:k,t:k,..." presses key k (u d l r a b) during tick t. */
+ * "t:k,t:k,..." presses key k (u d l r a b) during tick t. ACESPEEDER_RATE (or a file
+ * rate.txt) logs ticks and frames per second to stderr or rate.log. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -170,6 +171,13 @@ int main(int argc, char **argv)
 		g_gameState = GS_QUIT;
 	}
 	uint32_t last = plat_ticks_ms();
+	uint32_t rate_start = last;
+	int rate_ticks = 0, rate_frames = 0;
+	FILE *rate_file = plat_open_data("rate.txt", "r"); /* the PSP has no environment */
+	int show_rate = getenv("ACESPEEDER_RATE") != NULL || rate_file != NULL;
+	if (rate_file) {
+		fclose(rate_file);
+	}
 	while (!plat_should_quit() && g_gameState != GS_QUIT) {
 		uint32_t now = plat_ticks_ms();
 		if (now < last) {
@@ -182,6 +190,7 @@ int main(int argc, char **argv)
 		}
 		for (int n = 1;; n++) {
 			tick();
+			rate_ticks++;
 			last += 33;
 			if (n > 4) {
 				last = plat_ticks_ms();
@@ -195,6 +204,16 @@ int main(int argc, char **argv)
 		gfx_begin_frame();
 		render();
 		gfx_end_frame();
+		rate_frames++;
+		if (show_rate && plat_ticks_ms() - rate_start >= 5000) {
+			FILE *out = plat_open_save("rate.log", "a");
+			fprintf(out ? out : stderr, "%.1f ticks/s, %.1f frames/s\n", rate_ticks / 5.0, rate_frames / 5.0);
+			if (out) {
+				fclose(out);
+			}
+			rate_start = plat_ticks_ms();
+			rate_ticks = rate_frames = 0;
+		}
 	}
 	Title_Free(&g_title);
 	Menu_Free(&g_menu);

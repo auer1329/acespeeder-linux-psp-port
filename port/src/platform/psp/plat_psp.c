@@ -13,6 +13,7 @@
 #include <string.h>
 #include <sys/stat.h>
 
+#include "../clip.h"
 #include "../mixer.h"
 #include "../platform.h"
 
@@ -313,8 +314,13 @@ void gfx_clear(uint32_t rgb, int color, int depth)
 	sceGuClear((color ? GU_COLOR_BUFFER_BIT : 0) | (depth ? GU_DEPTH_BUFFER_BIT : 0));
 }
 
+/* Kept for the software clipping before 3D draws (see draw_clipped). */
+static float g_mv[4][4];
+static float g_fx = 1.0f, g_fy = 1.0f, g_near = 1.0f, g_far = 1000.0f;
+
 void gfx_set_projection(float fx, float fy, float n, float f)
 {
+	g_fx = fx, g_fy = fy, g_near = n, g_far = f;
 	ScePspFMatrix4 m;
 	memset(&m, 0, sizeof(m));
 	m.x.x = 1.0f / fx;
@@ -332,6 +338,7 @@ void gfx_set_projection(float fx, float fy, float n, float f)
 void gfx_set_modelview(const float m[4][4])
 {
 	/* Same memory layout as GL (see the Linux backend). */
+	memcpy(g_mv, m, sizeof(g_mv));
 	sceGumMatrixMode(GU_MODEL);
 	sceGumLoadMatrix((const ScePspFMatrix4 *)m);
 }
@@ -545,20 +552,46 @@ void gfx_texture_bind(int tex)
 
 #define VTYPE_3D (GU_TEXTURE_32BITF | GU_COLOR_8888 | GU_NORMAL_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_3D)
 
+/* persistent: the caller keeps the array unchanged until the frame ends */
+static void draw_clipped(const GfxVertex *v, int count, int persistent)
+{
+	if (count < 3) {
+		return;
+	}
+	clip_set_view(g_mv, g_fx, g_fy, g_near, g_far);
+	if (clip_all_inside(v, count)) {
+		if (persistent) {
+			sceKernelDcacheWritebackRange(v, sizeof(GfxVertex) * count);
+			sceGumDrawArray(GU_TRIANGLES, VTYPE_3D, count, 0, v);
+		}
+		else {
+			GfxVertex *copy = sceGuGetMemory(sizeof(GfxVertex) * count);
+			memcpy(copy, v, sizeof(GfxVertex) * count);
+			sceGumDrawArray(GU_TRIANGLES, VTYPE_3D, count, 0, copy);
+		}
+		return;
+	}
+	const GfxVertex *clipped;
+	int n = clip_triangles(v, count, &clipped);
+	if (n <= 0) {
+		return;
+	}
+	GfxVertex *copy = sceGuGetMemory(sizeof(GfxVertex) * n);
+	memcpy(copy, clipped, sizeof(GfxVertex) * n);
+	sceGumDrawArray(GU_TRIANGLES, VTYPE_3D, n, 0, copy);
+}
+
 void gfx_draw_triangles(const GfxVertex *v, int count, int use_vertex_color)
 {
 	(void)use_vertex_color;
-	sceKernelDcacheWritebackRange(v, sizeof(GfxVertex) * count);
-	sceGumDrawArray(GU_TRIANGLES, VTYPE_3D, count, 0, v);
+	draw_clipped(v, count, 1);
 }
 
 /* The GE reads vertices while the CPU goes on: copy arrays the caller reuses. */
 void gfx_draw_triangles_temp(const GfxVertex *v, int count, int use_vertex_color)
 {
 	(void)use_vertex_color;
-	GfxVertex *copy = sceGuGetMemory(sizeof(GfxVertex) * count);
-	memcpy(copy, v, sizeof(GfxVertex) * count);
-	sceGumDrawArray(GU_TRIANGLES, VTYPE_3D, count, 0, copy);
+	draw_clipped(v, count, 0);
 }
 
 void gfx_draw_lines(const GfxVertex *v, int count)

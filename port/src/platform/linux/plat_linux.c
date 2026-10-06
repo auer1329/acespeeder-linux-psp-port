@@ -7,6 +7,7 @@
 #include <string.h>
 #include <sys/stat.h>
 
+#include "../clip.h"
 #include "../mixer.h"
 #include "../platform.h"
 
@@ -350,8 +351,15 @@ void gfx_clear(uint32_t rgb, int color, int depth)
 	glClear((color ? GL_COLOR_BUFFER_BIT : 0) | (depth ? GL_DEPTH_BUFFER_BIT : 0));
 }
 
+/* ACESPEEDER_CLIP=<guard> runs the PSP's software clipping (see clip.h) with
+ * the given guard band, e.g. 0.9 to see it cut just inside the screen edges. */
+static float g_mv[4][4];
+static float g_fx = 1.0f, g_fy = 1.0f, g_near = 1.0f, g_far = 1000.0f;
+static int g_clip = -1;
+
 void gfx_set_projection(float fx, float fy, float n, float f)
 {
+	g_fx = fx, g_fy = fy, g_near = n, g_far = f;
 	/* Left-handed view space (+z forward) straight to GL clip space. */
 	float m[16] = {0};
 	m[0] = 1.0f / fx;
@@ -368,6 +376,7 @@ void gfx_set_modelview(const float m[4][4])
 {
 	/* A row-major row-vector matrix has the same memory layout as GL's
 	 * column-major column-vector matrix. */
+	memcpy(g_mv, m, sizeof(g_mv));
 	glMatrixMode(GL_MODELVIEW);
 	glLoadMatrixf(&m[0][0]);
 }
@@ -560,6 +569,22 @@ static void set_pointers(const GfxVertex *v, int color, int normal)
 
 void gfx_draw_triangles(const GfxVertex *v, int count, int use_vertex_color)
 {
+	if (g_clip < 0) {
+		const char *env = getenv("ACESPEEDER_CLIP");
+		g_clip = env != NULL;
+		if (env) {
+			clip_set_guard((float)atof(env));
+		}
+	}
+	if (g_clip) {
+		clip_set_view(g_mv, g_fx, g_fy, g_near, g_far);
+		if (!clip_all_inside(v, count)) {
+			count = clip_triangles(v, count, &v);
+			if (count <= 0) {
+				return;
+			}
+		}
+	}
 	set_pointers(v, use_vertex_color, 1);
 	glDrawArrays(GL_TRIANGLES, 0, count);
 }

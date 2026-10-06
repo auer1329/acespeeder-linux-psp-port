@@ -15,6 +15,7 @@ set(ENGINE_SRC
   src/engine/image.c
   src/engine/rm.c
   src/platform/mixer.c
+  src/platform/clip.c
   src/platform/linux/plat_linux.c
 )
 

@@ -6,7 +6,7 @@ TARGET = $(APP)
 
 ENGINE_OBJS = src/engine/rmath.o src/engine/xfile.o src/engine/image.o src/engine/rm.o \
               src/engine/font.o src/engine/sprite.o \
-              src/platform/mixer.o src/platform/psp/plat_psp.o
+              src/platform/mixer.o src/platform/clip.o src/platform/psp/plat_psp.o
 
 GAME_OBJS = src/game/gmath.o src/game/track.o src/game/machine.o src/game/camera.o src/game/sound.o \
             src/game/effects.o src/game/hud.o src/game/race.o src/game/save.o src/game/replay.o \

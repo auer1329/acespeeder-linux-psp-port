@@ -716,3 +716,248 @@ void Race_Render(Race *r)
 		break;
 	}
 }
+
+/* ---- attract-mode demo, game state 300 ----
+ * Race_UpdateDemo (0x415280) and Race_RenderDemo (0x416570): after idling on the
+ * title the menu sometimes shows the course instead of a replay. A camera flies
+ * in over it with the credits, follows an unseen machine round the track, turns
+ * around the title board and dives into a tunnel; A leaves early. */
+
+static RMFrame *g_tunnel; /* 0x451854 */
+
+/* 0x416420 */
+static void demo_setup(void)
+{
+	g_tunnel = load_object("tunnel.x", v3(0, 0, 0), Mat3_Identity(), v3(1500.0f, 1500.0f, 48000.0f), 0);
+	Machine *p = &g_machines[0];
+	p->tp.seg = (int16_t)(g_track.n - 1);
+	p->tp.t = 0.5f;
+	TrackPos_Update(&p->tp);
+	p->pos = Track_Point(&g_track, p->tp);
+	p->rot = Track_Frame(&g_track, p->tp);
+	p->model = 0;
+}
+
+static void demo_end(Race *r)
+{
+	Music_Stop();
+	Sound_Stop(0);
+	RM_RELEASE(g_tunnel); /* 0x416400 */
+	Race_Cleanup(r);
+	g_gameState = GS_MENU;
+}
+
+/* the chase view rocks around all three axes */
+static void demo_sway(Race *r)
+{
+	Camera *c = &g_camera;
+	r->demo_sway = (float)(r->demo_sway + 0.04);
+	c->rot = Mat3_Mul(Mat3_Rotate((float)(sin(r->demo_sway) * 0.4), 0), c->rot);
+	c->rot = Mat3_Mul(Mat3_Rotate((float)(sin(r->demo_sway * 1.2) * 0.4), 2), c->rot);
+	c->rot = Mat3_Mul(Mat3_Rotate((float)(sin(r->demo_sway * 0.7) * 0.6), 1), c->rot);
+}
+
+static Mat3 title_rot(const Race *r)
+{
+	Mat3 m;
+	memcpy(&m, r->u10, sizeof(m));
+	return m;
+}
+
+/* the title board turns while the camera circles it from `local` */
+static void demo_title_shot(Race *r, double s, Vec3 local)
+{
+	Mat3 tr = title_rot(r);
+	set_pose(S.title, r->title_pos, Mat3_Mul(Mat3_Rotate((float)(s * 3.14), 1), tr));
+	g_camera.pos = Vec3_Add(Mat3_MulVec(local, tr), r->title_pos);
+	g_camera.rot = Mat3_Mul(Mat3_LookDir(local, v3(0, 0, 0)), tr);
+}
+
+void Race_UpdateDemo(Race *r)
+{
+	Camera *c = &g_camera;
+	Machine *p = &g_machines[0];
+	if (r->state == 20) {
+		Race_Setup(r);
+		demo_setup();
+	}
+	if (g_racePhase != 40 && g_racePhase != 50 && g_input[IN_A] && !g_inputPrev[IN_A]) {
+		g_phaseTime = 0.0;
+		g_racePhase = 50;
+	}
+	double pt = g_phaseTime;
+	switch (g_racePhase) {
+	case 0:
+		Music_Play(g_track.s1a22 + 1);
+		Sound_PlayLoop(0);
+		g_phaseTime = pt = 0.0;
+		g_racePhase = 10;
+		/* fall through */
+	case 10: /* fly in over the course */
+		if (pt < 1500.0) {
+			double s = pt * (1.0 / 1500.0);
+			c->pos = Vec3_Quad(v3(50000.0f, 200.0f, 30000.0f), v3(30000.0f, 200.0f, 6000.0f),
+			                   v3(15000.0f, 3200.0f, 3000.0f), (float)(s * s));
+			c->rot = Mat3_LookDir(c->pos, v3((float)(c->pos.x - 600.0), 100.0f, (float)(c->pos.z - 360.0)));
+			c->rot = Mat3_Mul(Mat3_Rotate((float)sin(s * -10.0), 2), c->rot);
+			Doors_Open((float)pt);
+		}
+		else {
+			g_phaseTime = 0.0;
+			g_racePhase = 20;
+			c->dist = 100.0f;
+			Camera_StartRace(c);
+		}
+		c->pos.y = (float)(c->pos.y + 100.0);
+		break;
+	case 20: /* follow the machine round the track */
+		if (pt >= 1200.0) {
+			g_phaseTime = 0.0;
+			g_racePhase = 30;
+			break;
+		}
+		p->on_road = 1;
+		p->grounded = 1;
+		Machine_Update(p);
+		Machine_UpdatePose(p);
+		Camera_Chase(c);
+		demo_sway(r);
+		break;
+	case 30: /* circle the title board */
+		if (pt < 300.0) {
+			double s = pt * (1.0 / 300.0), u = 1.0 - s, a = s * -6.28;
+			float d = (float)(u * 2000.0 + 50.0);
+			demo_title_shot(r, s, v3((float)(sin(a) * d), (float)(u * 800.0), (float)(cos(a) * d)));
+		}
+		else {
+			g_phaseTime = 0.0;
+			g_racePhase = 40;
+		}
+		break;
+	case 40: /* into the tunnel */
+		if (pt < 500.0) {
+			double s = pt * (1.0 / 300.0), a = s * -6.28;
+			float d = (float)(s * 500.0 + 50.0), y = (float)(s * 500.0);
+			if (d > 200.0f) {
+				d = 200.0f;
+			}
+			if (y > 100.0f) {
+				y = 100.0f;
+			}
+			demo_title_shot(r, s, v3((float)(sin(a) * d), y, (float)(cos(a) * d)));
+			Mat3 tr = title_rot(r);
+			Vec3 q = Vec3_Lerp(v3(0, 0, 0), v3(0.0f, 0.0f, 10000.0f), (float)s);
+			q.z = (float)((int)q.z % 8000);
+			set_pose(g_tunnel, Vec3_Add(Mat3_MulVec(q, tr), r->title_pos), Mat3_Mul(Mat3_Rotate((float)(s * 6.28), 2), tr));
+			if (pt > 300.0) {
+				Doors_Close((float)(pt - 300.0));
+				if (pt > 400.0) {
+					demo_end(r);
+					return;
+				}
+			}
+		}
+		break;
+	case 50: /* A pressed: close the doors and leave */
+		Machine_Update(p);
+		Machine_UpdatePose(p);
+		Camera_Chase(c);
+		demo_sway(r);
+		Doors_Close((float)pt);
+		if (pt > 100.0) {
+			demo_end(r);
+			return;
+		}
+		break;
+	}
+	Gates_Update();
+	Scenery_Update();
+	g_phaseTime = x87_add(g_phaseTime, 1.65);
+}
+
+/* white text with a black drop shadow */
+static void shadowed(int x, int y, int align, const char *s)
+{
+	text(x + 1, y + 1, 20, 0x000000, align, s);
+	text(x, y, 20, 0xffffff, align, s);
+}
+
+void Race_RenderDemo(Race *r)
+{
+	if (!S.scene) {
+		return;
+	}
+	char buf[48];
+	int ph = g_racePhase, opt = g_save.opt[3];
+	double pt = g_phaseTime;
+	Vec3 cam = g_camera.pos;
+	set_pose(S.camera, g_camera.pos, g_camera.rot);
+	rm_viewport_clear(S.view);
+	if (opt >= 3 && opt != 4) {
+		gfx_begin_2d();
+		sprite_stretch(&S.hud.null_blu, 0, 0, 160, 120, 0, 0, 640, 480);
+		gfx_end_2d();
+	}
+	if (ph != 40) {
+		rm_frame_set_position(S.ground, S.scene, (float)(floor(cam.x * 0.000125) * 8000.0), 0.0f,
+		                      (float)(floor(cam.z * 0.000125) * 8000.0));
+		rm_viewport_render(S.view, S.ground);
+		if (opt < 3 || opt == 4) {
+			rm_frame_set_position(S.sky, S.scene, cam.x, 0.0f, cam.z);
+			rm_viewport_render(S.view, S.sky);
+		}
+	}
+	int on_course = ph == 20 || ph == 30 || ph == 50;
+	if (on_course) {
+		for (int i = 0; i <= g_track.n && i < S.meshes.nseg; i++) {
+			if (sqrtf(dist2(g_track.center[i], cam)) < g_track.radius[i] + 5000.0f) {
+				rm_viewport_render(S.view, S.seg[i]);
+			}
+		}
+		rm_viewport_render(S.view, S.title);
+		rm_viewport_render(S.view, S.titbar);
+	}
+	if (ph == 40) {
+		rm_viewport_render(S.view, S.title);
+		rm_viewport_render(S.view, g_tunnel);
+	}
+	if (ph != 40 && ph != 10) {
+		render_objects();
+	}
+	if (on_course) {
+		render_scenery();
+		Fx_SetMode(FX_BOARDS);
+		rm_viewport_render(S.view, S.fx_world);
+	}
+	if (ph == 10) { /* credits over the fly-in */
+		if (pt > 50.0 && pt < 280.0) {
+			shadowed(40, 230, FONT_LEFT, "Directed by");
+			shadowed(40, 260, FONT_LEFT, "Takahiro Nakatani");
+		}
+		else if (pt > 310.0 && pt < 540.0) {
+			shadowed(130, 350, FONT_LEFT, "Graphic by");
+			shadowed(130, 380, FONT_LEFT, "Wataru Kawakami");
+		}
+		else if (pt > 570.0 && pt < 800.0) {
+			shadowed(600, 160, FONT_RIGHT, "Sounds by");
+			shadowed(600, 190, FONT_RIGHT, "Kazumasa Kohara");
+		}
+		else if (pt > 830.0 && pt < 1060.0) {
+			shadowed(540, 300, FONT_RIGHT, "Composed by");
+			shadowed(540, 330, FONT_RIGHT, "T.Phuta");
+		}
+		else if (pt > 1100.0 && pt < 1450.0) {
+			HudMsg_Logo(&g_hudMsg, (float)((pt - 1100.0) * (1.0 / 350.0)));
+			Fx_SetMode(FX_ACE);
+			rm_viewport_render(S.view, S.fx_world);
+		}
+	}
+	else if (ph == 20) {
+		text(20, 10, 20, rgbf(1.0f, 0.3f, 0.3f), FONT_LEFT, "AceSpeeder!");
+		snprintf(buf, sizeof(buf), "Stage %d-%d", g_save.stage + 1, g_save.course + 1);
+		text(610, 425, 20, rgbf(0.3f, 0.3f, 1.0f), FONT_RIGHT, buf);
+	}
+	if (ph == 10 || ph == 40 || ph == 50) {
+		Doors_Render(S.view, S.scene, S.sun, g_camera.rot);
+	}
+}

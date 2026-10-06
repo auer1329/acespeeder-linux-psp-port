@@ -21,7 +21,8 @@ typedef struct {
 	int16_t a_now;        /* 0x48 accelerate button this tick */
 	int16_t a_prev;       /* 0x4a ... and the previous tick */
 	int32_t last_sec;     /* 0x4c last countdown second beeped */
-	uint8_t u50[8];
+	float demo_sway;      /* 0x50 camera sway of the attract-mode demo */
+	uint8_t u54[4];
 } Race;
 
 /* Race phases (g_racePhase, original 0x451f68). */
@@ -44,6 +45,8 @@ void Race_SetupStart(Race *r);
 void Race_SetupGrid(void);
 void Race_Cleanup(Race *r);  /* 0x414fe0 */
 void Race_Render(Race *r);   /* 0x412f40 draws the race and its HUD */
+void Race_UpdateDemo(Race *r); /* 0x415280 attract-mode demo, game state 300 */
+void Race_RenderDemo(Race *r); /* 0x416570 */
 
 
 extern int g_musicOn;        /* 0x452dfc, the music option */

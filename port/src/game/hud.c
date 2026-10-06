@@ -192,3 +192,32 @@ void HudMsg_Menu(HudMsg *m, float s)
 		m->v[i].tv = tv[i];
 	}
 }
+
+/* 0x41cfc0: the "AceSpeeder!" logo zooming in at the end of the demo's
+ * credits, then fading out after s = 0.8. */
+void HudMsg_Logo(HudMsg *m, float s)
+{
+	double k;
+	int grey;
+	if (s < 0.8f) {
+		double g = 1.0 - s * 1.25;
+		k = g * g * 8.8 + 1.2;
+		grey = (int)(s * 255.0f * 1.25);
+	}
+	else {
+		k = 1.2f;
+		grey = (int)((1.0 - (s - 0.8) * 5.0) * 255.0);
+	}
+	int w = (int)(k * 240.0f), h = (int)(k * 40.0f);
+	uint32_t c = 0x80000000u | (uint32_t)(grey & 0xff) << 16 | (uint32_t)(grey & 0xff) << 8 | (uint32_t)(grey & 0xff);
+	const float x[4] = {(float)(320 - w), (float)(320 + w), (float)(320 + w), (float)(320 - w)};
+	const float y[4] = {(float)(240 - h), (float)(240 - h), (float)(240 + h), (float)(240 + h)};
+	const float tu[4] = {0.0f, 1.0f, 1.0f, 0.0f}, tv[4] = {0.0f, 0.0f, 0.5f, 0.5f};
+	for (int i = 0; i < 4; i++) {
+		m->v[i].sx = x[i];
+		m->v[i].sy = y[i];
+		m->v[i].color = c;
+		m->v[i].tu = tu[i];
+		m->v[i].tv = tv[i];
+	}
+}

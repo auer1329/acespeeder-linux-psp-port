@@ -75,9 +75,7 @@ static void tick(void)
 		Ending_Update(&g_ending);
 		break;
 	case GS_DEMO:
-		/* the attract-mode race is not ported: back to the title */
-		g_title.state = 20;
-		g_gameState = GS_TITLE;
+		Race_UpdateDemo(&g_race);
 		break;
 	}
 }
@@ -135,6 +133,9 @@ static void render(void)
 	}
 	else if (g_gameState == GS_MENU && g_menu.state == 10) {
 		Menu_Render(&g_menu);
+	}
+	else if (g_gameState == GS_DEMO && g_race.state == 10) {
+		Race_RenderDemo(&g_race);
 	}
 	else if (g_gameState == GS_ENDING && g_ending.state == 10) {
 		Ending_Render(&g_ending);

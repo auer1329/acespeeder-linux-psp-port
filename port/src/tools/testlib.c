@@ -37,3 +37,6 @@ void test_camera_intro0(Camera *c) { Camera_Intro(c, 0); }
 void test_camera_intro1(Camera *c) { Camera_Intro(c, 1); }
 void test_camera_replay(Camera *c, const TrackPos *p, int lap) { Camera_Replay(c, *p, lap); }
 void test_camera_shot(Camera *c, const TrackPos *p, int lap, int dir, int shot) { Camera_ReplayShot(c, *p, lap, dir, shot); }
+
+#include "../game/effects.h"
+void test_explosion_add(const Vec3 *p) { Explosion_Add(*p); }

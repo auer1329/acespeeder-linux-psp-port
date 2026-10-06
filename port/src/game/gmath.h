@@ -54,6 +54,8 @@ int crt_rand(void);
 float x87_mul(float a, double c);
 float x87_add(double a, double c);
 float x87_muld(double a, double c); /* both operands double, e.g. a qword global */
+#define DMUL(a, c) x87_mul((a), (c))
+#define DADD(a, c) x87_add((a), (c))
 
 /* MSVC's __ftol truncates toward zero. */
 static inline int ftol(double v) { return (int)v; }

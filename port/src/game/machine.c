@@ -29,8 +29,6 @@ static const float k_jump_fwd[8] = {4, 3, 5, 4, 5, 3, 4, 5};
 
 /* x87 code loads many constants as doubles: the operation then rounds to float
  * once. Doing it in double and narrowing reproduces that (the FPU ran at 24 bits). */
-#define DMUL(a, c) x87_mul((a), (c))
-#define DADD(a, c) x87_add((a), (c))
 
 #define IN_A_ 4
 #define IN_RIGHT_ 2

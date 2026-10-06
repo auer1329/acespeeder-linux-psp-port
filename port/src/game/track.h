@@ -70,5 +70,6 @@ void Track_FreeMeshes(TrackMeshes *m);
 
 Vec3 Track_Point(const Track *trk, TrackPos p);  /* 0x4078a0 */
 Mat3 Track_Frame(const Track *trk, TrackPos p);  /* 0x407c30 */
+Mat3 Track_FlatFrame(const Track *trk, TrackPos p); /* 0x407e60: heading only, up = +y */
 
 #endif

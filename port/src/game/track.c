@@ -85,6 +85,27 @@ Mat3 Track_Frame(const Track *trk, TrackPos p)
 	return segment_frame(trk, &p);
 }
 
+Mat3 Track_FlatFrame(const Track *trk, TrackPos p)
+{
+	TrackPos_Update(&p);
+	int i = p.seg;
+	float fx = (trk->px[i + 1] - trk->cx[i]) * p.t;
+	float gx = (trk->px[i] - trk->cx[i]) * p.omt;
+	fx = (fx + fx) - (gx + gx);
+	float fz = (trk->pz[i + 1] - trk->cz[i]) * p.t;
+	float gz = (trk->pz[i] - trk->cz[i]) * p.omt;
+	fz = (fz + fz) - (gz + gz);
+	float len = sqrtf(fz * fz + fx * fx);
+	Mat3 m = Mat3_Identity();
+	if (len != 0.0f) {
+		float dx = fx / len, dz = fz / len;
+		m.m[6] = dx, m.m[7] = 0.0f, m.m[1] = 0.0f;
+		m.m[8] = dz, m.m[0] = dz;
+		m.m[2] = -dx;
+	}
+	return m;
+}
+
 /* ------------------------------------------------------------- data files */
 #ifndef GAME_TESTLIB
 

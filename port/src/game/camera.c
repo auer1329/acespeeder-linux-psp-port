@@ -19,8 +19,6 @@ Camera g_camera;
 Vec3 g_cameraFramePos;
 Mat3 g_cameraFrameRot;
 
-#define DMUL(a, c) x87_mul((a), (c))
-#define DADD(a, c) x87_add((a), (c))
 
 /* Per-model camera stiffness (0x44a364). */
 static const float k_cam_stiff[8] = {2.0f, 1.8f, 1.9f, 2.1f, 1.8f, 2.0f, 1.9f, 2.1f};

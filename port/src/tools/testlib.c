@@ -31,3 +31,9 @@ FILE *plat_open_data(const char *name, const char *mode) { (void)name; (void)mod
 #include "../game/track.h"
 void test_track_point(const TrackPos *p, Vec3 *out) { *out = Track_Point(&g_track, *p); }
 void test_track_frame(const TrackPos *p, Mat3 *out) { *out = Track_Frame(&g_track, *p); }
+
+#include "../game/camera.h"
+void test_camera_intro0(Camera *c) { Camera_Intro(c, 0); }
+void test_camera_intro1(Camera *c) { Camera_Intro(c, 1); }
+void test_camera_replay(Camera *c, const TrackPos *p, int lap) { Camera_Replay(c, *p, lap); }
+void test_camera_shot(Camera *c, const TrackPos *p, int lap, int dir, int shot) { Camera_ReplayShot(c, *p, lap, dir, shot); }

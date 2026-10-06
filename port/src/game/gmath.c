@@ -138,13 +138,13 @@ Mat3 Mat3_LookDir(Vec3 from, Vec3 to)
 {
 	Mat3 m;
 	Vec3 d = v3(to.x - from.x, to.y - from.y, to.z - from.z);
-	float l = sqrtf(d.x * d.x + d.y * d.y + d.z * d.z);
+	float l = sqrtf((d.z * d.z + d.y * d.y) + d.x * d.x);
 	d = v3(d.x / l, d.y / l, d.z / l);
 	Vec3 r = v3(d.z - 0.0f, 0.0f, 0.0f - d.x);
-	l = sqrtf(r.x * r.x + r.z * r.z + 0.0f);
+	l = sqrtf((r.z * r.z + r.y * r.y) + r.x * r.x);
 	r = v3(r.x / l, 0.0f / l, r.z / l);
 	Vec3 u = v3(r.z * d.y - r.y * d.z, r.x * d.z - r.z * d.x, r.y * d.x - r.x * d.y);
-	l = sqrtf(u.x * u.x + u.y * u.y + u.z * u.z);
+	l = sqrtf((u.z * u.z + u.y * u.y) + u.x * u.x);
 	m.m[0] = r.x, m.m[1] = r.y, m.m[2] = r.z;
 	m.m[3] = u.x / l, m.m[4] = u.y / l, m.m[5] = u.z / l;
 	m.m[6] = d.x, m.m[7] = d.y, m.m[8] = d.z;

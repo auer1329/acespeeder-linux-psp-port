@@ -1,0 +1,14 @@
+# build outputs
+port/build/
+port/*.elf
+port/*.PBP
+port/PARAM.SFO
+port/**/*.o
+# generated from the original game by re/scripts (see README)
+port/data/
+# reverse-engineering scratch
+re/.venv/
+re/ghidra_project/
+re/decomp_raw/
+re/ghidra_headless.log
+__pycache__/

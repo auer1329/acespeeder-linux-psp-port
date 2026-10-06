@@ -1,0 +1,34 @@
+# PSP build: make -f Makefile.psp [TARGET=viewer]
+# Produces EBOOT.PBP; copy it with the game data (see README) to ms0:/PSP/GAME/AceSpeeder/.
+APP ?= viewer
+TARGET = $(APP)
+
+ENGINE_OBJS = src/engine/rmath.o src/engine/xfile.o src/engine/image.o src/engine/rm.o \
+              src/platform/mixer.o src/platform/psp/plat_psp.o
+
+GAME_OBJS = src/game/gmath.o src/game/track.o
+
+ifeq ($(APP),viewer)
+APP_OBJS = src/tools/viewer.o
+endif
+ifeq ($(APP),trackview)
+APP_OBJS = src/tools/trackview.o $(GAME_OBJS)
+endif
+
+OBJS = $(APP_OBJS) $(ENGINE_OBJS)
+
+INCDIR =
+CFLAGS = -O2 -G0 -Wall -std=gnu99
+CXXFLAGS = $(CFLAGS)
+ASFLAGS = $(CFLAGS)
+LIBDIR =
+LDFLAGS =
+LIBS = -lpspgum -lpspgu -lpspaudiolib -lpspaudio -lpsppower -lpsprtc -lm
+
+EXTRA_TARGETS = EBOOT.PBP
+PSP_EBOOT_TITLE = AceSpeeder! ($(APP))
+
+PSPSDK = $(shell psp-config --pspsdk-path)
+include $(PSPSDK)/lib/build.mak
+
+src/platform/mixer.o: CFLAGS += -w

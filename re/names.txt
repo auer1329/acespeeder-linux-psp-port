@@ -1,0 +1,161 @@
+# addr name   -- applied to the Ghidra project by scripts/ApplyNames.java (run.sh)
+# Globals holding COM interfaces use g_<Alias>_ (alias list in scripts/annotate.py)
+
+# --- entry / main loop
+0041c160 WinMain_
+0041c320 InitWindow
+0041c0c0 InitGraphics
+0041be50 MainFrame
+0044a228 g_gameState
+00452dec g_hwnd
+
+# --- D3Z wrapper (direct3z.cpp)
+0040bd10 D3Z_Initialize
+0040bdd0 D3Z_Cleanup
+0040bd90 D3Z_SetMode
+0040bdc0 D3Z_SetFullscreen
+0040be60 D3Z_SetDisplayMode
+0040c290 D3Z_CreateDirectDrawWin
+0040c540 D3Z_CreateD3DRM
+0040c7d0 D3Z_FindDevice
+0040cbb0 D3Z_CreateViewport
+0040cd70 D3Z_DDErrorString
+0040d7c0 D3Z_RMErrorString
+0044de78 g_RM1_tmp
+0044de74 g_RM2_main
+0044e298 g_Dev2_main
+0044e2a0 g_View_main
+0044e290 g_d3dDevice
+0044ee64 g_screenW
+0044ee68 g_screenH
+0044ee6c g_screenBpp
+0044de68 g_DD_main
+0044de6c g_D3D2_main
+0044de7c g_DDS_primary
+0044de80 g_DDS_back
+0044de84 g_DDS_zbuf
+0040caf0 D3Z_Flip
+0040cc80 D3Z_SetActive
+0040ccb0 D3Z_RestoreSurfaces
+0040cd40 D3Z_DebugPrint
+0040b9e0 D3Z_LoadBitmapSurface
+0040bae0 D3Z_CopyBitmapToSurface
+0040bbe0 D3Z_ColorMatch
+0040bce0 D3Z_SetColorKey
+
+# --- 2D sprite (DirectDraw blit) helper class
+00401000 Sprite_Release
+00401020 Sprite_Load
+00401070 Sprite_BlitFrame
+004010d0 Sprite_Blit
+00401120 Sprite_BlitCurrent
+00401140 Sprite_SetFrameRect
+
+# --- scene object loaders (frame + .x meshbuilder)
+0040b6d0 Obj_LoadX_Quality80
+0040b7b0 Obj_LoadX_WithMaterial
+0040b900 Obj_LoadX_Quality40
+0040d8f0 Pair_Release
+
+# --- music (kbgm32)
+0041c3f0 Music_Init
+0041c430 Music_LoadAll
+0041c4b0 Music_Free
+0041c510 Music_Play
+0041c540 Music_Stop
+
+# --- math
+0041c550 TrackPos_Update
+0041c580 Mat3_Identity
+0041c5b0 Mat3_Mul
+0041c6d0 Mat3_MulT
+0041c7f0 TrackPos_Make
+0041c880 Vec3_Set
+0041c8c0 Vec3_Dist
+0041c900 Vec3_Lerp
+0041c970 Vec3_Quad
+0041ca10 Vec3_Add
+0041ca60 Mat3_Rotate
+0041cb00 Mat3_LookDir
+0041cc50 Mat3_MulVec
+0041ccc0 Mat3_MulVecT
+0041cd30 RandF
+0041cd50 Wave_Decay
+0041cd90 Wave_Bounce
+0041ce30 Wave_EaseIn
+0043ede3 crt_srand
+0043eded crt_rand
+0043ee0b crt_floor
+0043edbc crt_ftol
+
+# --- timer (fixed 33ms logic step)
+0045a648 g_timer
+0041f130 Timer_Init
+0041f140 Timer_Begin
+0041f160 Timer_Ready
+0041f180 Timer_Step
+
+# --- input
+0044f450 g_input
+0044f418 g_inputPrev
+0044f488 g_DI_main
+0044f410 g_DID_keyboard
+0044f414 g_DID_joystick
+0044f48c g_joystickOk
+00410690 Input_InitKeyboard
+00410750 Input_FreeKeyboard
+00410790 Input_ReadKeyboard
+004108d0 Input_InitJoystick
+00410a10 Input_FreeJoystick
+00410a50 Input_ReadJoystick
+00410b00 Input_Clear
+
+# --- sound effects (PDS.dll)
+0045a600 g_sound
+0041eab0 Sound_Init
+0041eb00 Sound_LoadAll
+0041ebc0 Sound_UnloadAll
+0041ebe0 Sound_Play
+0041ec00 Sound_PlayLoop
+0041ec20 Sound_Stop
+0041ec40 Sound_SetPan
+0041ec60 Sound_SetFreq
+00452df8 g_music
+
+# --- course data
+0044c230 g_track Track
+00418530 Course_BuildTrack
+0043ef30 __alloca_probe
+0044b670 g_machines Machine[7]
+004513e0 g_race
+00451f68 g_racePhase
+00451f70 g_phaseTime
+00451438 g_save
+0045143a g_selMachine
+0045143c g_selStage
+0045143e g_selCourse
+004531d0 g_replay
+00417070 Race_Setup
+00411530 Race_Update
+00416570 Race_RenderState300
+00415280 Race_UpdateState300
+0041e0d0 Replay_GetMachine
+0041dc50 Replay_Clear
+0041dc80 Replay_Record
+0041dcb0 Replay_Play
+0041dd50 Input_Zero3
+0041dd80 Replay_AtEnd
+0041dda0 Replay_Load
+0041de60 Replay_Save
+0041df30 Replay_Compress
+0041df90 Replay_Expand
+0041e050 Replay_Exists
+00418730 Save_Defaults
+00418810 Save_Reset
+00418880 Save_Load
+00418a10 Save_Write
+00418b70 Save_CheckCode
+00418be0 Save_IsRecord
+00418c80 Save_SetRecord
+00418d40 Save_MarkCleared
+00418d60 Save_UpdateRank

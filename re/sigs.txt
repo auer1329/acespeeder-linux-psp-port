@@ -1,0 +1,36 @@
+# <hexaddr> <C prototype>;   applied by scripts/ApplySigs.java (after names.txt, before CommitParams)
+# Types available: Ghidra builtins (float, double, int, short, uint, char, void *, float10 ...)
+0041cd30 double RandF(void);
+0041cd50 double __cdecl Wave_Decay(float x);
+0041cd90 double __cdecl Wave_Bounce(float x);
+0041ce30 double __cdecl Wave_EaseIn(float x);
+0041c8c0 double __cdecl Vec3_Dist(Vec3 a, Vec3 b);
+0041c880 Vec3 * __cdecl Vec3_Set(Vec3 *out, float x, float y, float z);
+0041ca10 Vec3 * __cdecl Vec3_Add(Vec3 *out, Vec3 a, Vec3 b);
+0041c900 Vec3 * __cdecl Vec3_Lerp(Vec3 *out, Vec3 a, Vec3 b, float t);
+0041ca60 Mat3 * __cdecl Mat3_Rotate(Mat3 *out, float angle, short axis);
+0041cb00 Mat3 * __cdecl Mat3_LookDir(Mat3 *out, Vec3 from, Vec3 to);
+0043eded int crt_rand(void);
+0043ede3 void __cdecl crt_srand(uint seed);
+0043ee0b double __cdecl crt_floor(double x);
+
+# --- by-value struct helpers (types in types.h)
+0041c550 void __fastcall TrackPos_Update(TrackPos *p);
+0041c7f0 TrackPos * __cdecl TrackPos_Make(TrackPos *out, float s, float l, float h);
+0041c580 void __fastcall Mat3_Identity(Mat3 *m);
+0041c5b0 Mat3 * __cdecl Mat3_Mul(Mat3 a, Mat3 b, Mat3 *out);
+0041c6d0 Mat3 * __cdecl Mat3_MulT(Mat3 a, Mat3 b, Mat3 *out);
+0041cc50 Vec3 * __cdecl Mat3_MulVec(Vec3 v, Mat3 m, Vec3 *out);
+0041ccc0 Vec3 * __cdecl Mat3_MulVecT(Vec3 v, Mat3 m, Vec3 *out);
+0041c970 Vec3 * __cdecl Vec3_Quad(Vec3 *out, Vec3 a, Vec3 b, Vec3 c, float t);
+004078a0 Vec3 * __thiscall Track_Point(Track *trk, Vec3 *out, TrackPos p);
+00407c30 Mat3 * __thiscall Track_Frame(Track *trk, Mat3 *out, TrackPos p);
+0040e6c0 void __cdecl Profile_Make(int type, float halfwidth, float yoff, float *xs, float *ys, float wall);
+0040ea60 void __cdecl Profile_Edges(int type, short *edges);
+0040ebb0 void Track_MarkProfileChanges(void);
+00408470 void __thiscall Track_BuildMeshes(Track *trk, short mode);
+
+# --- machines
+004047e0 void __thiscall Machine_Init(Machine *m);
+00404aa0 void __thiscall Machine_Update(Machine *m);
+00407230 void __thiscall Machine_Update2(Machine *m);

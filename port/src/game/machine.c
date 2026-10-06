@@ -12,7 +12,9 @@
 
 #include "track.h"
 
-Machine g_machines[7];
+Machine g_machines[8];
+Vec3 g_playerFramePos;
+Mat3 g_playerFrameRot;
 Pickups g_pickups;
 Sparks g_sparks;
 int32_t g_input[14];
@@ -94,8 +96,8 @@ int Sparks_Add(Vec3 v)
 	g_sparks.pos[i] = v;
 	g_sparks.vel[i].x = (float)cos((double)crt_rand());
 	g_sparks.vel[i].z = (float)sin((double)crt_rand());
-	float c = (float)cos((double)crt_rand());
-	g_sparks.vel[i].y = c + 1.5f + c + 1.5f;
+	double c = cos((double)crt_rand()); /* stays in an x87 register: not rounded */
+	g_sparks.vel[i].y = x87_add(x87_add(x87_add(c, 1.5), c), 1.5);
 	g_sparks.next = (int16_t)((i + 1) % 50);
 	return (i + 1) / 50;
 }
@@ -585,6 +587,10 @@ void Machine_UpdatePose(Machine *m)
 		shake = Mat3_MulVec(shake, m->rot);
 		m->dpos = Vec3_Add(shake, m->dpos);
 	}
+	if (m->is_ai == 0) {
+		g_playerFramePos = m->dpos;
+		g_playerFrameRot = m->drot;
+	}
 
 	int s = m->tp.seg;
 	m->shadow_vis = 0;
@@ -609,4 +615,142 @@ void Machine_UpdatePose(Machine *m)
 			m->shadow_rot = Mat3_Mul(yaw, road);
 		}
 	}
+}
+
+void Machine_Init(Machine *m)
+{
+	m->model = 7;
+	m->tp.seg = 0;
+	m->tp.t = 0.0f;
+	m->tp.slot = 3;
+	m->tp.u = 0.5f;
+	m->tp.h = 20.0f;
+	TrackPos_Update(&m->tp);
+	m->pos = Track_Point(&g_track, m->tp);
+	m->rot = Track_Frame(&g_track, m->tp);
+	m->dpos = m->pos;
+	m->air_time = 1000.0f;
+	m->hit_time = 1000.0f;
+	m->sp_timer = 1000.0f;
+	m->drot = m->rot;
+	m->alive = 1;
+	m->on_road = 1;
+	m->grounded = 1;
+	m->lap = 0;
+	m->power = 100.0f;
+	m->airborne = 0;
+	m->sp_active = 0;
+	m->sp_kind = 0;
+	m->time = 0.0;
+	memset(m->lap_time, 0, sizeof(m->lap_time));
+	m->best_lap = 999.99;
+	m->rank = 7;
+	m->throttle = 0.0f;
+	m->accel = v3(0, 0, 0);
+	m->vel = v3(0, 0, 0);
+	m->steer = 0.0f;
+	m->shadow_vis = 0;
+	m->shadow_pos = v3(0, 0, 0);
+	m->shadow_rot = Mat3_Identity();
+	m->autopilot = 1;
+	m->is_ai = 0;
+}
+
+/* Start of the race proper: full throttle and a kick along the first segment. */
+void Machine_Launch(Machine *m)
+{
+	m->throttle = k_max_throttle[m->model];
+	m->accel = v3(0.0f, 0.0f, 10.0f);
+	m->vel = Mat3_MulVec(v3(0.0f, 0.0f, 30.0f), Track_Frame(&g_track, TrackPos_Make(0.0f, 3.0f, 0.0f)));
+	memset(g_input, 0, sizeof(g_input));
+	memset(g_inputPrev, 0, sizeof(g_inputPrev));
+}
+
+/* After falling off: tumble down, explode when hitting y = 0. */
+void Machine_Crash(Machine *m)
+{
+	if (m->pos.y <= 0.0f) {
+		if (m->pos.y < -1.0f) {
+			Sound_Play(2);
+			m->sp_timer = 0.0f;
+			m->sp_kind = 3;
+		}
+		m->pos.y = 0.0f;
+		g_playerFramePos = v3(m->pos.x, 0.0f, m->pos.z);
+	}
+	else {
+		m->vel.x = DMUL(m->vel.x, 0.95);
+		m->vel.z = DMUL(m->vel.z, 0.95);
+		m->vel.y = DADD(DMUL(m->vel.y, 0.95), -1.5);
+		m->shadow_vis = 0;
+		m->pos.x = m->vel.x + m->pos.x;
+		m->pos.y = m->vel.y + m->pos.y;
+		m->pos.z = m->vel.z + m->pos.z;
+		m->rot = Mat3_Mul(Mat3_Rotate(0.05f, 2), m->rot);
+		m->rot = Mat3_Mul(Mat3_Rotate(0.03f, 0), m->rot);
+		m->dpos = m->pos;
+		m->drot = m->rot;
+		g_playerFramePos = m->pos;
+	}
+	g_playerFrameRot = m->rot;
+}
+
+void Machine_BestLap(Machine *m)
+{
+	m->best_lap = m->time;
+	for (int i = 0; i < g_track.laps; i++) {
+		if (m->lap_time[i] < m->best_lap) {
+			m->best_lap = m->lap_time[i];
+		}
+	}
+}
+
+/* The player bumping into the other machines (only the player collides). */
+void Race_Collide(void)
+{
+	Machine *p = &g_machines[0];
+	for (int i = 1; i <= 7; i++) { /* sic: 7 is the phantom slot */
+		Machine *o = &g_machines[i];
+		float dx = o->pos.x - p->pos.x;
+		float dy = o->pos.y - p->pos.y;
+		float dz = o->pos.z - p->pos.z;
+		float dist = sqrtf((dz * dz + dy * dy) + dx * dx);
+		if (!(dist < 40.0f)) {
+			continue;
+		}
+		p->vel.x = DMUL(o->vel.x, 1.9) - p->vel.x;
+		p->vel.y = DMUL(o->vel.y, 1.9) - p->vel.y;
+		p->vel.z = DMUL(o->vel.z, 1.9) - p->vel.z;
+		if (p->autopilot == 0) {
+			p->power = DADD(p->power, -0.6);
+		}
+		float k = DADD(dist, -40.0);
+		float px = dx * k / dist, py = dy * k / dist, pz = dz * k / dist;
+		Track_Move(&p->tp, px, py, pz);
+		p->pos = Track_Point(&g_track, p->tp);
+		Sound_SetPan(3, ftol(DMUL(px, 450.0)));
+		Sound_Play(3);
+		Vec3 v = Mat3_MulVecT(v3(DMUL(dx, 20.0) / dist, DMUL(dy, 20.0) / dist, DMUL(dz, 20.0) / dist), p->rot);
+		for (int j = 0; j < 5; j++) {
+			Sparks_Add(v);
+		}
+	}
+}
+
+/* Number of machines ahead of the player (laps*segments + position). */
+int Race_PlayerRank(void)
+{
+	int n = g_track.n + 1;
+	float prog[7];
+	for (int i = 1; i <= 7; i++) {
+		prog[i - 1] = (float)(g_machines[i].lap * n + g_machines[i].tp.seg) + g_machines[i].tp.t;
+	}
+	float me = (float)(g_machines[0].lap * n + g_machines[0].tp.seg) + g_machines[0].tp.t;
+	int ahead = 0;
+	for (int i = 0; i < 7; i++) {
+		if (me < prog[i]) {
+			ahead++;
+		}
+	}
+	return ahead;
 }

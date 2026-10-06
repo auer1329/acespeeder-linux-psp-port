@@ -29,7 +29,7 @@ float x87_muld(double a, double c)
 	return round_exact(p, fma(a, c, -p));
 }
 
-float x87_add(float a, double c)
+float x87_add(double a, double c)
 {
 	double s = (double)a + c;
 	double bb = s - (double)a; /* TwoSum: exact error of the addition */

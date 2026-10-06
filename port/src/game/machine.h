@@ -35,7 +35,9 @@ typedef struct {
 	int16_t sp_kind;      /* 0x0ea 0 boost, 1 jump, 2 path */
 	float sp_timer;       /* 0x0ec */
 	double time;          /* 0x0f0 race time */
-	uint8_t uf8[0x4a];    /* 0x0f8 */
+	double lap_time[8];   /* 0x0f8 */
+	double best_lap;      /* 0x138 */
+	int16_t rank;         /* 0x140 */
 	int16_t shadow_vis;   /* 0x142 */
 	Vec3 shadow_pos;      /* 0x144 */
 	Mat3 shadow_rot;      /* 0x150 */
@@ -67,7 +69,14 @@ typedef struct {
 	uint8_t rest[0x1a00]; /* 0x5e0 render data */
 } Sparks;
 
-extern Machine g_machines[7];
+/* 7 machines; slot 7 is never written (zero) but the original's collision and
+ * rank loops run one past the array, so a phantom machine sits at the origin. */
+#define NUM_MACHINES 7
+extern Machine g_machines[8];
+/* Pose of the player's 3D frame, which the original sets directly on the
+ * Direct3D frame from the physics code. */
+extern Vec3 g_playerFramePos;
+extern Mat3 g_playerFrameRot;
 extern Pickups g_pickups;
 extern Sparks g_sparks;
 extern int32_t g_input[14];
@@ -78,6 +87,12 @@ void Machine_Update(Machine *m);                                     /* 0x404aa0
 /* 0x407230. The original also moves the player's 3D frame here; the port does
  * that when rendering (Race code) from dpos/drot. */
 void Machine_UpdatePose(Machine *m);
+void Machine_Init(Machine *m);                                       /* 0x4047e0 */
+void Machine_Launch(Machine *m);                                     /* 0x4049a0 */
+void Machine_Crash(Machine *m);                                      /* 0x406da0 */
+void Machine_BestLap(Machine *m);                                    /* 0x407840 */
+void Race_Collide(void);                                             /* 0x406f70 */
+int Race_PlayerRank(void);                                           /* 0x4071a0 */
 void Track_Move(TrackPos *p, float dx, float dy, float dz);          /* 0x4082d0 */
 void Track_PointFrame(TrackPos p, Vec3 *pos, Mat3 *rot);             /* 0x407f50 */
 TrackPos Pickups_PathPos(float timer, int idx, TrackPos start);      /* 0x4193e0 */

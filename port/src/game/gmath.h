@@ -52,7 +52,7 @@ int crt_rand(void);
 /* x87 ops with a double operand (constants the original keeps as qwords) under
  * 24-bit precision control: the exact result rounded once to float. */
 float x87_mul(float a, double c);
-float x87_add(float a, double c);
+float x87_add(double a, double c);
 float x87_muld(double a, double c); /* both operands double, e.g. a qword global */
 
 /* MSVC's __ftol truncates toward zero. */

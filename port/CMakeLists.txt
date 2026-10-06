@@ -30,7 +30,7 @@ set(GAME_SRC src/game/gmath.c src/game/track.c src/game/machine.c src/game/camer
 # The original's physics ran in single precision: no fused/contracted operations.
 set(GAME_FLAGS -Wall -Wextra -Wno-unused-parameter -ffp-contract=off)
 
-add_library(game STATIC ${GAME_SRC} src/game/sound.c src/game/fx.c src/game/scene.c src/game/course_objects.c src/game/doors.c src/game/title.c src/game/menu.c src/game/ending.c)
+add_library(game STATIC ${GAME_SRC} src/game/sound.c src/game/fx.c src/game/scene.c src/game/course_objects.c src/game/doors.c src/game/title.c src/game/menu.c src/game/ending.c src/game/settings.c)
 target_link_libraries(game PUBLIC engine)
 target_compile_options(game PRIVATE ${GAME_FLAGS})
 

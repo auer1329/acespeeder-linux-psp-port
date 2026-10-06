@@ -10,7 +10,7 @@ ENGINE_OBJS = src/engine/rmath.o src/engine/xfile.o src/engine/image.o src/engin
 
 GAME_OBJS = src/game/gmath.o src/game/track.o src/game/machine.o src/game/camera.o src/game/sound.o \
             src/game/effects.o src/game/hud.o src/game/race.o src/game/save.o src/game/replay.o \
-            src/game/fx.o src/game/scene.o src/game/course_objects.o src/game/doors.o src/game/title.o src/game/menu.o src/game/ending.o
+            src/game/fx.o src/game/scene.o src/game/course_objects.o src/game/doors.o src/game/title.o src/game/menu.o src/game/ending.o src/game/settings.o
 
 ifeq ($(APP),viewer)
 APP_OBJS = src/tools/viewer.o

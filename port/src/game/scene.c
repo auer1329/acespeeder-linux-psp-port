@@ -19,6 +19,7 @@
 #include "race.h"
 #include "replay.h"
 #include "save.h"
+#include "settings.h"
 #include "track.h"
 
 #define FOG_COLOR 0xff0c0019u
@@ -311,7 +312,7 @@ void Race_Setup(Race *r)
 	set_fog(S.fx);
 	/* SetFront(0) is rejected by Direct3D RM, so the near plane stays at 1 */
 	rm_viewport_set_back(S.view, 20000.0f);
-	rm_viewport_set_field(S.view, 1.0f);
+	rm_viewport_set_field(S.view, Settings_FovScale()); /* the original's field is 1 */
 	hud_load(&S.hud);
 }
 

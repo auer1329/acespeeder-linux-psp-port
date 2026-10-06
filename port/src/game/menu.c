@@ -20,6 +20,7 @@
 #include "menu.h"
 #include "race.h"
 #include "save.h"
+#include "settings.h"
 
 /* screens */
 enum {
@@ -395,6 +396,9 @@ static void options_input(Menu *m, int i)
 		else if (m->cursor == 1) {
 			s->opt[3] = (int16_t)((s->opt[3] + 1) & 7);
 		}
+		else if (g_settings.fov < FOV_LEVELS - 1) {
+			g_settings.fov++;
+		}
 	}
 	else if (pressed(IN_LEFT)) {
 		Sound_Play(4);
@@ -411,20 +415,26 @@ static void options_input(Menu *m, int i)
 		else if (m->cursor == 1) {
 			s->opt[3] = (int16_t)((s->opt[3] + 7) & 7);
 		}
+		else if (g_settings.fov > 0) {
+			g_settings.fov--;
+		}
 	}
 	else if (pressed(IN_UP) || pressed(IN_DOWN)) {
+		/* the original has two rows; the port adds the field of view */
 		Sound_Play(4);
-		m->cursor = (int16_t)((m->cursor + 1) & 1);
+		m->cursor = (int16_t)((m->cursor + (pressed(IN_UP) ? 2 : 1)) % 3);
 	}
 	else if (pressed(IN_A)) {
 		Sound_Play(7);
 		Save_Write(s);
+		Settings_Save();
 		m->cursor = 0;
 		go(m, i, SC_MODE, LS_DONE);
 	}
 	else if (pressed(IN_B)) {
 		Sound_Play(7);
 		Save_Write(s);
+		Settings_Save();
 		m->cursor = 0;
 		go(m, i, SC_MODE, LS_BACK);
 	}
@@ -815,6 +825,8 @@ static void render_options(Menu *m)
 	if (g_save.opt[3] >= 0 && g_save.opt[3] <= 7) {
 		text(500, 270, 12, 0xffffff, FONT_RIGHT, k_graphics[g_save.opt[3]]);
 	}
+	text(150, 320, 12, 0xffffff, FONT_LEFT, "FOV");
+	text(500, 320, 12, 0xffffff, FONT_RIGHT, Settings_FovName());
 }
 
 static void render_texts(Menu *m, const MenuLayer *l)

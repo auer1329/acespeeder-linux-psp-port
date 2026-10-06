@@ -102,5 +102,6 @@ void snd_set_pan(int h, int pan);   /* DirectSound-style: -10000 (left) .. 10000
 void snd_set_freq(int h, int hz);   /* playback frequency in Hz, 0 = original */
 void mus_play(const char *name, int loop);
 void mus_stop(void);
+void snd_set_volumes(float music, float sfx); /* 0..1 each */
 
 #endif

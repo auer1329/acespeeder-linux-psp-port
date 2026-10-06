@@ -219,6 +219,18 @@ static int music_frame(float *l, float *r)
 	return 1;
 }
 
+/* Port settings: the original mixed both at full scale through DirectSound
+ * and its MIDI synth, which the pre-rendered music does not match. */
+static float g_vol_music = 1.0f, g_vol_sfx = 0.6f;
+
+void snd_set_volumes(float music, float sfx)
+{
+	mixer_lock();
+	g_vol_music = music;
+	g_vol_sfx = sfx;
+	mixer_unlock();
+}
+
 void mixer_render(int16_t *out, int frames)
 {
 	static int32_t acc[4096 * 2];
@@ -241,7 +253,7 @@ void mixer_render(int16_t *out, int frames)
 		else if (s->pan < 0) {
 			rg = powf(10.0f, s->pan / 2000.0f);
 		}
-		int li = (int)(lg * 256), ri = (int)(rg * 256);
+		int li = (int)(lg * g_vol_sfx * 256), ri = (int)(rg * g_vol_sfx * 256);
 		for (int i = 0; i < frames; i++) {
 			int p = (int)s->pos;
 			if (p >= s->len) {
@@ -264,8 +276,8 @@ void mixer_render(int16_t *out, int frames)
 			if (!music_frame(&l, &r)) {
 				break;
 			}
-			acc[i * 2] += (int32_t)(l * 26000.0f);
-			acc[i * 2 + 1] += (int32_t)(r * 26000.0f);
+			acc[i * 2] += (int32_t)(l * g_vol_music * 32767.0f);
+			acc[i * 2 + 1] += (int32_t)(r * g_vol_music * 32767.0f);
 			g_music_pos += g_music_step;
 			while (g_music_pos >= 1.0) {
 				g_music_pos -= 1.0;

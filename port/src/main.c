@@ -21,6 +21,7 @@
 #include "game/machine.h"
 #include "game/race.h"
 #include "game/save.h"
+#include "game/settings.h"
 #include "game/ending.h"
 #include "game/menu.h"
 #include "game/title.h"
@@ -155,6 +156,7 @@ int main(int argc, char **argv)
 	Sound_LoadAll();
 	Save_Defaults(&g_save);
 	Save_Load(&g_save);
+	Settings_Load();
 	int start[4] = {0, 0, 0, -1};
 	FILE *f = plat_open_data("start.txt", "r");
 	if (f) {

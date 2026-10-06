@@ -47,7 +47,14 @@ F1–F4 (camera views); a gamepad works too.
 `ACESPEEDER_KEYS`, `ACESPEEDER_RATE` and `ACESPEEDER_STATE` are described at the
 top of `src/main.c`.
 
-## Not ported
+## Settings added by the port
 
-The attract-mode race that the original sometimes runs after idling on the title
-screen (game state 300); the port returns to the title instead.
+The Setting screen has a third row, FOV, which widens the race camera's field of
+view (Original, Wide, Wider, Widest; Wide by default). It is saved with the music
+and sound effect volumes in `settings.txt` next to the saves:
+
+    fov=1
+    music=100
+    sfx=60
+
+The volumes are in percent and can be edited by hand (0-200).

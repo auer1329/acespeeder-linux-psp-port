@@ -65,7 +65,7 @@ static void ending_setup(Ending *e)
 	rm_mb_set_perspective(mb, 1);
 	rm_frame_add_visual(E.model, mb);
 	rm_release(mb);
-	Doors_Init(E.camera);
+	Doors_Init(E.camera, 1.0f);
 	rm_frame_set_scene_background_rgb(E.scene, 0, 0, 0);
 	rm_viewport_set_back(E.view, 5000.0f);
 	rm_viewport_set_field(E.view, 1.0f);

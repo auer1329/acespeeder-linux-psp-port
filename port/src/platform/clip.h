@@ -18,6 +18,7 @@ void clip_set_guard(float guard);
 void clip_set_view(const float mv[4][4], float fx, float fy, float n, float f);
 /* whether every vertex is inside, tested on the corners of the bounding box */
 int clip_all_inside(const GfxVertex *v, int count);
+int clip_box_inside(const float box[6]); /* the same test on known bounds */
 /* Clips a triangle list; returns the vertex count of the clipped list (valid
  * until the next call) through *out, or -1 when out of memory. */
 int clip_triangles(const GfxVertex *v, int count, const GfxVertex **out);

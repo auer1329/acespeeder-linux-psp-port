@@ -9,9 +9,14 @@
  * Debugging: ACESPEEDER_SHOTS="t1,t2,..." (or the same list in a file shots.txt
  * in the data folder, for the PSP) runs one logic tick per frame without waiting,
  * saves shot_<tick>.ppm at those ticks and quits after the last. ACESPEEDER_KEYS=
- * "t:k,t1-t2:k,..." presses key k (u d l r a b) during tick t or ticks t1..t2. ACESPEEDER_RATE (or a file
+ * "t:k,t1-t2:k,..." presses key k (u d l r a b, s START, f meter) during tick t or ticks t1..t2. ACESPEEDER_RATE (or a file
  * rate.txt) logs ticks and frames per second to stderr or rate.log. ACESPEEDER_STATE
- * starts in another game state, e.g. 700 for the staff roll. */
+ * starts in another game state, e.g. 700 for the staff roll.
+ *
+ * Port additions: START (P on the PC) pauses and resumes a race and confirms
+ * elsewhere; SELECT (F12) shows a performance meter. When a state has nothing
+ * to draw yet (a course loading), no frame is shown, so the closed doors stay
+ * on screen instead of a black one. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -37,18 +42,25 @@ static void start_race(void)
 
 static const char *g_keys; /* scripted key presses for debugging */
 static int g_tick;
+static int g_perf; /* performance meter shown */
 
 static void scripted_keys(void)
 {
 	static const char names[] = "udrlab";
+	static const int extra_keys[2] = {IN_START, IN_PERF}; /* s, f */
 	for (const char *p = g_keys; p && *p;) {
 		int t = atoi(p), t2 = t;
 		const char *c = strchr(p, ':'), *dash = strchr(p, '-');
 		if (dash && c && dash < c) {
 			t2 = atoi(dash + 1);
 		}
-		if (c && g_tick >= t && g_tick <= t2 && strchr(names, c[1])) {
-			g_input[strchr(names, c[1]) - names] = 1;
+		if (c && g_tick >= t && g_tick <= t2 && c[1]) {
+			if (strchr(names, c[1])) {
+				g_input[strchr(names, c[1]) - names] = 1;
+			}
+			else if (c[1] == 's' || c[1] == 'f') {
+				g_input[extra_keys[c[1] == 'f']] = 1;
+			}
 		}
 		p = strchr(p, ',');
 		p = p ? p + 1 : NULL;
@@ -62,6 +74,13 @@ static void tick(void)
 	plat_read_input(g_input);
 	g_tick++;
 	scripted_keys();
+	if (g_input[IN_START]) {
+		int racing = g_gameState == GS_RACE && (g_racePhase == PH_RACING || g_racePhase == PH_PAUSED);
+		g_input[racing ? IN_B : IN_A] = 1;
+	}
+	if (g_input[IN_PERF] && !g_inputPrev[IN_PERF]) {
+		g_perf = !g_perf;
+	}
 	switch (g_gameState) {
 	case GS_RACE:
 		Race_Update(&g_race);
@@ -124,23 +143,83 @@ static int check_data(void)
 	return 0;
 }
 
+/* whether the current game state has something to draw */
+static int can_render(void)
+{
+	switch (g_gameState) {
+	case GS_RACE:
+	case GS_DEMO:
+		return g_race.state == 10;
+	case GS_TITLE:
+		return g_title.state == 10;
+	case GS_MENU:
+		return g_menu.state == 10;
+	case GS_ENDING:
+		return g_ending.state == 10;
+	}
+	return 0;
+}
+
 static void render(void)
 {
-	if (g_gameState == GS_RACE && g_race.state == 10) {
+	if (!can_render()) {
+		return;
+	}
+	switch (g_gameState) {
+	case GS_RACE:
 		Race_Render(&g_race);
-	}
-	else if (g_gameState == GS_TITLE && g_title.state == 10) {
+		break;
+	case GS_TITLE:
 		Title_Render(&g_title);
-	}
-	else if (g_gameState == GS_MENU && g_menu.state == 10) {
+		break;
+	case GS_MENU:
 		Menu_Render(&g_menu);
-	}
-	else if (g_gameState == GS_DEMO && g_race.state == 10) {
+		break;
+	case GS_DEMO:
 		Race_RenderDemo(&g_race);
-	}
-	else if (g_gameState == GS_ENDING && g_ending.state == 10) {
+		break;
+	case GS_ENDING:
 		Ending_Render(&g_ending);
+		break;
 	}
+}
+
+/* Averages over 30 frames of the time spent in the logic ticks, in building
+ * the frame, waiting for the GPU, and between frames. */
+static struct {
+	uint32_t logic, draw, gpu, frame, last;
+	int n;
+	char text[96];
+} g_meter;
+
+static void meter_add(uint32_t logic, uint32_t draw)
+{
+	uint32_t now = plat_time_us();
+	g_meter.logic += logic;
+	g_meter.draw += draw;
+	g_meter.gpu += gfx_gpu_wait_us();
+	g_meter.frame += now - g_meter.last;
+	g_meter.last = now;
+	if (++g_meter.n == 30) {
+		float k = 1.0f / (30 * 1000.0f);
+		snprintf(g_meter.text, sizeof(g_meter.text), "logic %.1f  draw %.1f  gpu %.1f ms  %.1f fps",
+		         g_meter.logic * k, g_meter.draw * k, g_meter.gpu * k,
+		         g_meter.frame ? 30e6f / (float)g_meter.frame : 0.0f);
+		g_meter.logic = g_meter.draw = g_meter.gpu = g_meter.frame = 0;
+		g_meter.n = 0;
+	}
+}
+
+static void meter_draw(void)
+{
+	if (!g_perf || !g_meter.text[0]) {
+		return;
+	}
+	gfx_begin_2d();
+	gfx_set_blend(GFX_BLEND_ALPHA);
+	gfx_fill_rect_2d(0, 452, 640, 28, 0xa0000000u);
+	font_draw(8, 456, 10, 0xffff80, FONT_LEFT, g_meter.text);
+	gfx_end_2d();
 }
 
 int main(int argc, char **argv)
@@ -215,8 +294,11 @@ int main(int argc, char **argv)
 				        g_machines[0].lap, g_machines[0].tp.seg + g_machines[0].tp.t, g_machines[0].sp_active,
 				        g_machines[0].sp_kind, g_machines[0].sp_timer);
 			}
+			uint32_t t1 = plat_time_us();
 			gfx_begin_frame();
 			render();
+			meter_draw();
+			meter_add(0, plat_time_us() - t1);
 			if (atoi(shots) == t) {
 				char path[64];
 #ifdef __PSP__
@@ -252,6 +334,7 @@ int main(int argc, char **argv)
 			plat_sleep_ms(1);
 			continue;
 		}
+		uint32_t t0 = plat_time_us();
 		for (int n = 1;; n++) {
 			tick();
 			rate_ticks++;
@@ -265,9 +348,16 @@ int main(int argc, char **argv)
 				break;
 			}
 		}
+		uint32_t t1 = plat_time_us();
+		if (!can_render()) {
+			continue; /* keep the last frame on screen */
+		}
 		gfx_begin_frame();
 		render();
+		meter_draw();
+		uint32_t t2 = plat_time_us();
 		gfx_end_frame();
+		meter_add(t1 - t0, t2 - t1);
 		rate_frames++;
 		if (show_rate && plat_ticks_ms() - rate_start >= 5000) {
 			FILE *out = plat_open_save("rate.log", "a");

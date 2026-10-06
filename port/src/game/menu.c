@@ -243,7 +243,7 @@ static void menu_setup(Menu *m)
 		rm_mb_set_color(mb, 0xff004c00u | hi << 16 | lo);
 		M.courses[i] = frame_with(mb, v3(0.0f, 10000.0f, 0.0f));
 	}
-	Doors_Init(M.camera);
+	Doors_Init(M.camera, 1.0f);
 	Fx_Init();
 	M.fx = rm_frame_create(M.scene);
 	set_pose(M.fx, v3(0, 0, 0), Mat3_Identity());

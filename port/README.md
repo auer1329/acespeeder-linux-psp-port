@@ -28,9 +28,11 @@ If files are missing the game says which. Saves and replays go to
 | PSP | Game |
 |---|---|
 | D-pad / analog stick | steer, move in the menus |
-| Cross, Start | accelerate, confirm |
-| Circle, Square | pause, back |
+| Cross | accelerate, confirm |
+| Circle | back (and pause, like the original's key) |
+| Start | pause and resume a race, confirm in the menus |
 | Triangle | change the camera view |
+| Select | show the performance meter (logic, drawing and GPU time per frame) |
 
 ## Linux
 
@@ -40,7 +42,8 @@ If files are missing the game says which. Saves and replays go to
 `ACESPEEDER_DATA` lists the data folders, separated by `:`; saves go to
 `~/.local/share/acespeeder` unless `ACESPEEDER_SAVE` says otherwise. Keys, as in
 the original: arrows, Space or Enter (accelerate / confirm), Shift (pause / back),
-F1–F4 (camera views); a gamepad works too.
+F1–F4 (camera views); a gamepad works too. P pauses like the PSP's Start and F12
+shows the performance meter.
 
 `build/acespeeder <stage> <course> <machine> <mode>` starts straight in a race
 (mode 0 grand prix, 1 practice, 2 replay). For debugging, `ACESPEEDER_SHOTS`,

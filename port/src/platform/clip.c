@@ -99,21 +99,13 @@ static int reserve(void **buf, int *cap, int need, size_t size)
 
 /* Whether every vertex of the draw is safely inside: tested on the corners
  * of its bounding box, which is all most draws need. */
-int clip_all_inside(const GfxVertex *v, int count)
+int clip_box_inside(const float box[6])
 {
-	float lo[3] = {v[0].x, v[0].y, v[0].z}, hi[3] = {v[0].x, v[0].y, v[0].z};
-	for (int i = 1; i < count; i++) {
-		const float p[3] = {v[i].x, v[i].y, v[i].z};
-		for (int k = 0; k < 3; k++) {
-			if (p[k] < lo[k]) lo[k] = p[k];
-			if (p[k] > hi[k]) hi[k] = p[k];
-		}
-	}
 	for (int c = 0; c < 8; c++) {
 		ClipVertex cv;
-		cv.v.x = c & 1 ? hi[0] : lo[0];
-		cv.v.y = c & 2 ? hi[1] : lo[1];
-		cv.v.z = c & 4 ? hi[2] : lo[2];
+		cv.v.x = box[c & 1 ? 3 : 0];
+		cv.v.y = box[c & 2 ? 4 : 1];
+		cv.v.z = box[c & 4 ? 5 : 2];
 		to_view(&cv.v, &cv.x, &cv.y, &cv.z);
 		for (int k = 0; k < CLIP_PLANES; k++) {
 			if (plane_dist(&cv, k) < 0.0f) {
@@ -122,6 +114,19 @@ int clip_all_inside(const GfxVertex *v, int count)
 		}
 	}
 	return 1;
+}
+
+int clip_all_inside(const GfxVertex *v, int count)
+{
+	float box[6] = {v[0].x, v[0].y, v[0].z, v[0].x, v[0].y, v[0].z};
+	for (int i = 1; i < count; i++) {
+		const float p[3] = {v[i].x, v[i].y, v[i].z};
+		for (int k = 0; k < 3; k++) {
+			if (p[k] < box[k]) box[k] = p[k];
+			if (p[k] > box[3 + k]) box[3 + k] = p[k];
+		}
+	}
+	return clip_box_inside(box);
 }
 
 int clip_triangles(const GfxVertex *v, int count, const GfxVertex **out_v)

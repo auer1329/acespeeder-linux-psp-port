@@ -29,8 +29,12 @@ PSP_HEAP_SIZE_KB(-1024); /* all but 1 MB of user RAM for the heap */
 #define VIRT_H 480
 
 static unsigned int __attribute__((aligned(16))) g_list[256 * 1024];
-static void *g_fbp0, *g_fbp1, *g_zbp;
+/* Triple buffering: one buffer on screen, one queued for the next vertical
+ * blank, one being drawn, so the CPU never waits for the display. */
+static void *g_fb[3], *g_zbp;
+static int g_draw_idx;
 static void *g_draw_buf; /* the buffer sceGu draws into this frame */
+static uint32_t g_gpu_wait;
 static int g_quit;
 static SceUID g_audio_sema = -1;
 
@@ -127,15 +131,17 @@ int plat_init(void)
 	sceCtrlSetSamplingCycle(0);
 	sceCtrlSetSamplingMode(PSP_CTRL_MODE_ANALOG);
 
-	g_fbp0 = vram_static(BUF_W * SCR_H * 2);
-	g_fbp1 = vram_static(BUF_W * SCR_H * 2);
+	for (int i = 0; i < 3; i++) {
+		g_fb[i] = vram_static(BUF_W * SCR_H * 2);
+	}
 	g_zbp = vram_static(BUF_W * SCR_H * 2);
 
 	sceGuInit();
 	sceGuStart(GU_DIRECT, g_list);
-	sceGuDrawBuffer(GU_PSM_5650, g_fbp0, BUF_W);
-	g_draw_buf = g_fbp0;
-	sceGuDispBuffer(SCR_W, SCR_H, g_fbp1, BUF_W);
+	sceGuDrawBuffer(GU_PSM_5650, g_fb[0], BUF_W);
+	g_draw_idx = 0;
+	g_draw_buf = g_fb[0];
+	sceGuDispBuffer(SCR_W, SCR_H, g_fb[2], BUF_W);
 	sceGuDepthBuffer(g_zbp, BUF_W);
 	sceGuOffset(2048 - SCR_W / 2, 2048 - SCR_H / 2);
 	sceGuViewport(2048, 2048, SCR_W, SCR_H);
@@ -174,9 +180,16 @@ void plat_shutdown(void)
 	sceKernelExitGame();
 }
 
+/* 16.5 per vertical blank: a 33 ms logic tick every second blank (29.97 Hz
+ * against the original's 30.3), so the motion is even at 30 frames a second. */
 uint32_t plat_ticks_ms(void)
 {
-	return (uint32_t)(sceKernelGetSystemTimeWide() / 1000);
+	return (uint32_t)(sceDisplayGetVcount() * 33u / 2u);
+}
+
+uint32_t plat_time_us(void)
+{
+	return (uint32_t)sceKernelGetSystemTimeLow();
 }
 
 void plat_sleep_ms(int ms)
@@ -191,8 +204,9 @@ int plat_should_quit(void)
 
 /* ------------------------------------------------------------------ input */
 
-/* Cross/Start: accelerate and confirm. Circle/Square: cancel and pause.
- * Triangle steps through the four chase views (F2, F3, F4, F1 on the PC). */
+/* Cross: accelerate and confirm. Circle: cancel. Start: pause in a race,
+ * confirm elsewhere (see main.c). Triangle steps through the four chase views
+ * (F2, F3, F4, F1 on the PC). Select toggles the performance meter. */
 void plat_read_input(int32_t keys[IN_COUNT])
 {
 	static const int views[4] = {IN_F2, IN_F3, IN_F4, IN_F1};
@@ -204,8 +218,10 @@ void plat_read_input(int32_t keys[IN_COUNT])
 	if ((b & PSP_CTRL_DOWN) || pad.Ly > 128 + 50) keys[IN_DOWN] = 1;
 	if ((b & PSP_CTRL_RIGHT) || pad.Lx > 128 + 50) keys[IN_RIGHT] = 1;
 	if ((b & PSP_CTRL_LEFT) || pad.Lx < 128 - 50) keys[IN_LEFT] = 1;
-	if (b & (PSP_CTRL_CROSS | PSP_CTRL_START)) keys[IN_A] = 1;
-	if (b & (PSP_CTRL_CIRCLE | PSP_CTRL_SQUARE)) keys[IN_B] = 1;
+	if (b & PSP_CTRL_CROSS) keys[IN_A] = 1;
+	if (b & PSP_CTRL_CIRCLE) keys[IN_B] = 1;
+	if (b & PSP_CTRL_START) keys[IN_START] = 1;
+	if ((b & PSP_CTRL_SELECT) && !(b & PSP_CTRL_START)) keys[IN_PERF] = 1;
 	if ((b & PSP_CTRL_TRIANGLE) && !triangle_was_down) {
 		view = (view + 1) % 4;
 		keys[views[view]] = 1;
@@ -235,10 +251,34 @@ int gfx_screen_w(void) { return VIRT_W; }
 int gfx_screen_h(void) { return VIRT_H; }
 float gfx_pixel_aspect(void) { return ((float)SCR_W / SCR_H) / ((float)VIRT_W / VIRT_H); }
 
+static void *vram_abs(void *rel)
+{
+	return (char *)sceGeEdramGetAddr() + (unsigned int)rel;
+}
+
+/* whether the display shows or is about to show this buffer */
+static int on_display(void *rel)
+{
+	void *addr;
+	int bw, fmt;
+	unsigned int target = (unsigned int)vram_abs(rel) & 0x0fffffff;
+	sceDisplayGetFrameBuf(&addr, &bw, &fmt, PSP_DISPLAY_SETBUF_IMMEDIATE);
+	if (((unsigned int)addr & 0x0fffffff) == target) {
+		return 1;
+	}
+	sceDisplayGetFrameBuf(&addr, &bw, &fmt, PSP_DISPLAY_SETBUF_NEXTFRAME);
+	return ((unsigned int)addr & 0x0fffffff) == target;
+}
+
 void gfx_begin_frame(void)
 {
+	/* only when frames come faster than the display shows them */
+	for (int i = 0; i < 3 && on_display(g_draw_buf); i++) {
+		sceDisplayWaitVblankStart();
+	}
 	sceGuStart(GU_DIRECT, g_list);
 	g_in_frame = 1;
+	sceGuDrawBufferList(GU_PSM_5650, g_draw_buf, BUF_W);
 	sceGuScissor(0, 0, SCR_W, SCR_H);
 	sceGuClearColor(0xff000000);
 	sceGuClearDepth(0);
@@ -248,11 +288,18 @@ void gfx_begin_frame(void)
 void gfx_end_frame(void)
 {
 	sceGuFinish();
+	uint32_t t0 = sceKernelGetSystemTimeLow();
 	sceGuSync(0, 0);
+	g_gpu_wait = sceKernelGetSystemTimeLow() - t0;
 	g_in_frame = 0;
-	sceDisplayWaitVblankStart();
-	sceGuSwapBuffers();
-	g_draw_buf = g_draw_buf == g_fbp0 ? g_fbp1 : g_fbp0;
+	sceDisplaySetFrameBuf(vram_abs(g_draw_buf), BUF_W, PSP_DISPLAY_PIXEL_FORMAT_565, PSP_DISPLAY_SETBUF_NEXTFRAME);
+	g_draw_idx = (g_draw_idx + 1) % 3;
+	g_draw_buf = g_fb[g_draw_idx];
+}
+
+uint32_t gfx_gpu_wait_us(void)
+{
+	return g_gpu_wait;
 }
 
 static void save_ppm(const char *path, const uint16_t *px)
@@ -621,13 +668,13 @@ void gfx_texture_bind(int tex)
 #define VTYPE_3D (GU_TEXTURE_32BITF | GU_COLOR_8888 | GU_NORMAL_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_3D)
 
 /* persistent: the caller keeps the array unchanged until the frame ends */
-static void draw_clipped(const GfxVertex *v, int count, int persistent)
+static void draw_clipped(const GfxVertex *v, int count, int persistent, const float *box)
 {
 	if (count < 3) {
 		return;
 	}
 	clip_set_view(g_mv, g_fx, g_fy, g_near, g_far);
-	if (clip_all_inside(v, count)) {
+	if (box ? clip_box_inside(box) : clip_all_inside(v, count)) {
 		if (persistent) {
 			sceKernelDcacheWritebackRange(v, sizeof(GfxVertex) * count);
 			sceGumDrawArray(GU_TRIANGLES, VTYPE_3D, count, 0, v);
@@ -652,14 +699,20 @@ static void draw_clipped(const GfxVertex *v, int count, int persistent)
 void gfx_draw_triangles(const GfxVertex *v, int count, int use_vertex_color)
 {
 	(void)use_vertex_color;
-	draw_clipped(v, count, 1);
+	draw_clipped(v, count, 1, NULL);
+}
+
+void gfx_draw_triangles_box(const GfxVertex *v, int count, int use_vertex_color, const float box[6])
+{
+	(void)use_vertex_color;
+	draw_clipped(v, count, 1, box);
 }
 
 /* The GE reads vertices while the CPU goes on: copy arrays the caller reuses. */
 void gfx_draw_triangles_temp(const GfxVertex *v, int count, int use_vertex_color)
 {
 	(void)use_vertex_color;
-	draw_clipped(v, count, 0);
+	draw_clipped(v, count, 0, NULL);
 }
 
 void gfx_draw_lines(const GfxVertex *v, int count)

@@ -222,6 +222,11 @@ uint32_t plat_ticks_ms(void)
 	return SDL_GetTicks();
 }
 
+uint32_t plat_time_us(void)
+{
+	return (uint32_t)(SDL_GetPerformanceCounter() * 1000000 / SDL_GetPerformanceFrequency());
+}
+
 void plat_sleep_ms(int ms)
 {
 	SDL_Delay((Uint32)ms);
@@ -267,6 +272,8 @@ void plat_read_input(int32_t keys[IN_COUNT])
 	if (k[SDL_SCANCODE_F2]) keys[IN_F2] = 1;
 	if (k[SDL_SCANCODE_F3]) keys[IN_F3] = 1;
 	if (k[SDL_SCANCODE_F4]) keys[IN_F4] = 1;
+	if (k[SDL_SCANCODE_P]) keys[IN_START] = 1;   /* port: pause like the PSP's START */
+	if (k[SDL_SCANCODE_F12]) keys[IN_PERF] = 1;  /* port: performance meter */
 	if (g_pad) {
 		/* Original joystick: axis beyond +-50 of +-1000, even buttons = A, odd = B. */
 		int ax = SDL_GameControllerGetAxis(g_pad, SDL_CONTROLLER_AXIS_LEFTX);
@@ -328,6 +335,11 @@ void plat_screenshot(const char *path)
 		fclose(f);
 	}
 	free(px);
+}
+
+uint32_t gfx_gpu_wait_us(void)
+{
+	return 0;
 }
 
 void gfx_end_frame(void)
@@ -587,6 +599,12 @@ void gfx_draw_triangles(const GfxVertex *v, int count, int use_vertex_color)
 	}
 	set_pointers(v, use_vertex_color, 1);
 	glDrawArrays(GL_TRIANGLES, 0, count);
+}
+
+void gfx_draw_triangles_box(const GfxVertex *v, int count, int use_vertex_color, const float box[6])
+{
+	(void)box;
+	gfx_draw_triangles(v, count, use_vertex_color);
 }
 
 void gfx_draw_triangles_temp(const GfxVertex *v, int count, int use_vertex_color)

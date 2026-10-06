@@ -6,7 +6,8 @@
 #include "../engine/rm.h"
 #include "gmath.h"
 
-void Doors_Init(RMFrame *camera);  /* 0x40d920: frames attached to the camera */
+/* 0x40d920: frames attached to the camera; field is the viewport's */
+void Doors_Init(RMFrame *camera, float field);
 void Doors_Free(void);
 void Doors_Open(float t);          /* 0x40dc90 */
 void Doors_Close(float t);         /* 0x40dd60 */

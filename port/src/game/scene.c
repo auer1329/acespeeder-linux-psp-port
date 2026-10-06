@@ -287,7 +287,7 @@ void Race_Setup(Race *r)
 	Track_PointFrame(TrackPos_Make(0.0f, 3.5f, -90.0f), &pos, &rot);
 	S.titbar = load_object("titbar.x", pos, rot, v3(500.0f, 500.0f, 500.0f), 1);
 
-	Doors_Init(S.camera);
+	Doors_Init(S.camera, Settings_FovScale());
 
 	/* course objects; the detail option drops the scenery and the objects */
 	int opt = g_save.opt[3];

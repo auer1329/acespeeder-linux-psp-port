@@ -72,7 +72,7 @@ static void title_setup(void)
 	T.ace = load_object("tt.x", v3(-120.0f, -100.0f, 0.0f), v3(100.0f, 100.0f, 100.0f), 1);
 	T.speed = load_object("nn.x", v3(120.0f, -100.0f, 0.0f), v3(100.0f, 100.0f, 100.0f), 1);
 	T.ground = load_object("gro.x", v3(120.0f, -100.0f, 0.0f), v3(10000.0f, 10000.0f, 10000.0f), 0);
-	Doors_Init(T.camera);
+	Doors_Init(T.camera, 1.0f);
 
 	rm_frame_set_scene_background_rgb(T.scene, 0, 0, 0);
 	rm_frame_set_scene_fog_enable(T.scene, 1);

@@ -2,18 +2,25 @@
 #include <stddef.h>
 
 
+#include "../platform/platform.h"
+
 static RMFrame *g_doors[2];
 static RMFrame *g_camera;
+static float g_sx = 1.0f, g_sy = 1.0f;
 
-void Doors_Init(RMFrame *camera)
+void Doors_Init(RMFrame *camera, float field)
 {
+	/* The shutter was made to fill a 4:3 view with a field of 1: stretch it
+	 * to the screen's shape and the view's field so it covers the edges. */
+	g_sx = field * gfx_pixel_aspect();
+	g_sy = field;
 	static const char *const names[2] = {"doora.x", "doorb.x"};
 	g_camera = camera;
 	for (int k = 0; k < 2; k++) {
 		g_doors[k] = rm_frame_create(camera);
 		RMMeshBuilder *mb = rm_mb_create();
 		rm_mb_load(mb, names[k]);
-		rm_mb_scale(mb, 60.0f, 60.0f, 100.0f);
+		rm_mb_scale(mb, 60.0f * g_sx, 60.0f * g_sy, 100.0f);
 		rm_mb_set_quality(mb, 0x88);
 		rm_mb_set_perspective(mb, 1);
 		RMMaterial *m = rm_material_create(50.0f);
@@ -38,8 +45,8 @@ static void place(float w)
 	if (!g_doors[0]) {
 		return;
 	}
-	rm_frame_set_position(g_doors[0], g_camera, 0.0f, w * 80.0f - 0.5f, 50.0f);
-	rm_frame_set_position(g_doors[1], g_camera, 0.0f, 0.5f - w * 80.0f, 50.0f);
+	rm_frame_set_position(g_doors[0], g_camera, 0.0f, (w * 80.0f - 0.5f) * g_sy, 50.0f);
+	rm_frame_set_position(g_doors[1], g_camera, 0.0f, (0.5f - w * 80.0f) * g_sy, 50.0f);
 	for (int k = 0; k < 2; k++) {
 		rm_frame_set_orientation(g_doors[k], g_camera, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f);
 	}

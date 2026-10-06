@@ -9,7 +9,10 @@
 /* ---- lifecycle / time ---- */
 int plat_init(void);
 void plat_shutdown(void);
+/* Clock of the logic ticks. On the PSP it follows the vertical blanks (33 per
+ * two), so each 33 ms tick lines up with a 30 Hz frame. */
 uint32_t plat_ticks_ms(void);
+uint32_t plat_time_us(void); /* wall clock in microseconds, for profiling */
 void plat_sleep_ms(int ms);
 int plat_should_quit(void); /* window closed / HOME pressed */
 void plat_screenshot(const char *path); /* binary PPM of the current back buffer (debug aid) */
@@ -23,6 +26,11 @@ FILE *plat_open_save(const char *name, const char *mode);
 enum {
 	IN_UP, IN_DOWN, IN_RIGHT, IN_LEFT, IN_A, IN_B, IN_6, IN_ESC,
 	IN_F1, IN_F2, IN_F3, IN_F4, IN_12, IN_13, IN_COUNT
+};
+/* Port-only keys in the unused slots: START pauses or confirms (see main.c),
+ * the performance meter toggles. */
+enum {
+	IN_START = IN_6, IN_PERF = IN_13
 };
 void plat_read_input(int32_t keys[IN_COUNT]); /* sets held keys to 1, leaves others untouched */
 
@@ -57,6 +65,7 @@ int gfx_screen_h(void);
 float gfx_pixel_aspect(void); /* physical display aspect / virtual aspect (PSP: 16:9 vs 4:3) */
 void gfx_begin_frame(void);
 void gfx_end_frame(void); /* present */
+uint32_t gfx_gpu_wait_us(void); /* time the last gfx_end_frame waited for the GPU */
 void gfx_set_viewport(int x, int y, int w, int h);
 void gfx_clear(uint32_t rgb, int color, int depth); /* rgb = 0x00RRGGBB (D3DCOLOR order) */
 
@@ -85,6 +94,8 @@ void gfx_texture_bind(int tex); /* -1 = untextured */
  * frame ends. gfx_draw_triangles_temp copies it first, for arrays that are reused. */
 void gfx_draw_triangles(const GfxVertex *v, int count, int use_vertex_color);
 void gfx_draw_triangles_temp(const GfxVertex *v, int count, int use_vertex_color);
+/* gfx_draw_triangles with the bounds of the vertices known (min xyz, max xyz) */
+void gfx_draw_triangles_box(const GfxVertex *v, int count, int use_vertex_color, const float box[6]);
 void gfx_draw_lines(const GfxVertex *v, int count);
 
 /* 2D in the original's 640x480 virtual screen. Textured quad from texel rect to screen rect. */

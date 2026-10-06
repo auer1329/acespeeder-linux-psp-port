@@ -55,6 +55,7 @@ typedef struct {
 	int blended;
 	GfxVertex *v;
 	int n, cap;
+	float box[6];   /* bounds of the vertices: min xyz, max xyz */
 } DrawGroup;
 
 struct RMMeshBuilder {
@@ -793,6 +794,15 @@ static DrawGroup *group_for(RMMeshBuilder *mb, RMTexture *tex, RMMaterial *mat, 
 static void group_push(DrawGroup *g, const GfxVertex *v)
 {
 	GROW(g->v, g->n, g->cap);
+	const float p[3] = {v->x, v->y, v->z};
+	for (int k = 0; k < 3; k++) {
+		if (g->n == 0 || p[k] < g->box[k]) {
+			g->box[k] = p[k];
+		}
+		if (g->n == 0 || p[k] > g->box[3 + k]) {
+			g->box[3 + k] = p[k];
+		}
+	}
 	g->v[g->n++] = *v;
 }
 
@@ -1003,7 +1013,7 @@ static void draw_mb(RMMeshBuilder *mb, const Mat4 *mv, int pass_blended)
 			gfx_texture_bind(-1);
 		}
 		gfx_set_alpha_test(alpha_test);
-		gfx_draw_triangles(g->v, g->n, 1);
+		gfx_draw_triangles_box(g->v, g->n, 1, g->box);
 	}
 	gfx_set_alpha_test(0);
 }

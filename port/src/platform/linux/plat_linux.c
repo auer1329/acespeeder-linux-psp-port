@@ -476,6 +476,17 @@ void gfx_set_depth(int test, int write)
 	glDepthMask(write ? GL_TRUE : GL_FALSE);
 }
 
+void gfx_set_depth_offset(int on)
+{
+	if (on) {
+		glEnable(GL_POLYGON_OFFSET_FILL);
+		glPolygonOffset(-1.0f, -4.0f);
+	}
+	else {
+		glDisable(GL_POLYGON_OFFSET_FILL);
+	}
+}
+
 void gfx_set_cull(int on)
 {
 	if (on) {

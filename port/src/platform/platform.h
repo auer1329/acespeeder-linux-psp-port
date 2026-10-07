@@ -78,6 +78,9 @@ void gfx_set_lights(GfxColor ambient, const GfxLight *lights, int count);
 void gfx_set_material(GfxColor diffuse, GfxColor emissive, GfxColor specular, float power);
 void gfx_set_fog(int on, uint32_t rgb, float start, float end); /* rgb = 0x00RRGGBB */
 void gfx_set_depth(int test, int write);
+/* Pulls what follows slightly towards the camera in depth, for decals on a
+ * surface (the PSP's 16-bit depth buffer cannot tell them apart otherwise). */
+void gfx_set_depth_offset(int on);
 void gfx_set_cull(int on);
 enum { GFX_BLEND_OFF, GFX_BLEND_ALPHA, GFX_BLEND_ADD };
 void gfx_set_blend(int mode); /* GFX_BLEND_ALPHA: src alpha / one minus src alpha; ADD: one / one */

@@ -233,6 +233,10 @@ static void render_cb(RMUserVisual *uv, void *arg, RMViewport *view)
 		}
 	}
 	else if (mode == FX_BOARDS) {
+		/* decals 5 units over the road: keep them in front of it in depth,
+		 * and do not write depth so the machines still cover them */
+		gfx_set_depth(1, 0);
+		gfx_set_depth_offset(1);
 		int frame = (int)(g_phaseTime * 0.08333333333333333) % 16;
 		float u = (float)(frame % 4) * 0.25f, v = (float)(frame / 4) * 0.25f;
 		for (int i = 0; i < g_pickups.count && i < 16; i++) {
@@ -243,6 +247,8 @@ static void render_cb(RMUserVisual *uv, void *arg, RMViewport *view)
 			q[3].u = u, q[3].v = v + 0.25f;
 			draw_fan(q, 4);
 		}
+		gfx_set_depth_offset(0);
+		gfx_set_depth(1, 1);
 	}
 	else if (mode == FX_SPARKS) {
 		for (int i = 0; i < nsparks; i++) {

@@ -124,9 +124,13 @@ void snd_play(int h, int loop)
 		return;
 	}
 	mixer_lock();
+	/* As DirectSound's Play: a loop that is already playing carries on (the
+	 * race asks for the low-power warning every tick). */
+	if (!(loop && g_sounds[h].playing && g_sounds[h].loop)) {
+		g_sounds[h].pos = 0.0;
+	}
 	g_sounds[h].playing = 1;
 	g_sounds[h].loop = loop;
-	g_sounds[h].pos = 0.0;
 	mixer_unlock();
 }
 

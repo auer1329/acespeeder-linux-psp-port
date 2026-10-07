@@ -470,6 +470,12 @@ void gfx_set_depth(int test, int write)
 	sceGuDepthMask(write ? GU_FALSE : GU_TRUE); /* GU mask: TRUE disables writes */
 }
 
+void gfx_set_depth_offset(int on)
+{
+	/* depth units of 65536, larger is nearer (sceGuDepthRange(65535, 0)) */
+	sceGuDepthOffset(on ? 4 : 0);
+}
+
 void gfx_set_cull(int on)
 {
 	if (on) {

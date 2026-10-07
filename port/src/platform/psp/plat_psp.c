@@ -22,7 +22,10 @@
 
 PSP_MODULE_INFO("AceSpeeder", 0, 1, 0);
 PSP_MAIN_THREAD_ATTR(THREAD_ATTR_USER | THREAD_ATTR_VFPU);
-PSP_HEAP_SIZE_KB(-1024); /* all but 1 MB of user RAM for the heap */
+/* A race needs about 9 MB. The rest of user RAM stays free for the system's
+ * dialogs (save data), which load their code and images into it on a real
+ * PSP and quit at once when they cannot (PPSSPP does not need it). */
+PSP_HEAP_SIZE_KB(14 * 1024);
 
 #define SCR_W 480
 #define SCR_H 272
@@ -341,6 +344,7 @@ void gfx_begin_frame(void)
 
 void gfx_end_frame(void)
 {
+
 	sceGuFinish();
 	uint32_t t0 = sceKernelGetSystemTimeLow();
 	sceGuSync(0, 0);
@@ -857,6 +861,8 @@ void gfx_end_2d(void)
 
 /* All save files packed in one DATA.BIN: "ASSAVE01", count, then for each
  * file its name length, name, size and contents. */
+#define SAVE_CAP (512 * 1024) /* the save is about 40 KB with all replays */
+
 static uint8_t *g_saved_blob;   /* as last loaded from or saved to the card */
 static size_t g_saved_size;
 
@@ -978,7 +984,8 @@ static int savedata_dialog(int mode, void *buf, SceSize bufsize, SceSize datasiz
 		p.pic1FileData.bufSize = p.pic1FileData.size = pic_size;
 	}
 	int result = -1;
-	if (sceUtilitySavedataInitStart(&p) == 0) {
+	int start = sceUtilitySavedataInitStart(&p);
+	if (start == 0) {
 		for (int running = 1; running && !g_quit;) {
 			sceGuStart(GU_DIRECT, g_list);
 			sceGuDrawBufferList(GU_PSM_5650, g_draw_buf, BUF_W);
@@ -1005,6 +1012,12 @@ static int savedata_dialog(int mode, void *buf, SceSize bufsize, SceSize datasiz
 		}
 		result = p.base.result;
 	}
+	FILE *log = plat_open_save("savedata.log", "a");
+	if (log) {
+		fprintf(log, "mode %d start %08x result %08x size %u free %u\n", mode, (unsigned)start, (unsigned)result,
+		        (unsigned)datasize, (unsigned)sceKernelTotalFreeMemSize());
+		fclose(log);
+	}
 	free(icon);
 	free(pic);
 	return result;
@@ -1012,7 +1025,7 @@ static int savedata_dialog(int mode, void *buf, SceSize bufsize, SceSize datasiz
 
 void plat_save_load(void)
 {
-	SceSize cap = 4 * 1024 * 1024;
+	SceSize cap = SAVE_CAP;
 	uint8_t *buf = malloc(cap);
 	if (!buf) {
 		return;
@@ -1029,7 +1042,8 @@ void plat_save_commit(void)
 {
 	size_t n;
 	uint8_t *blob = pack_saves(&n);
-	if (!blob) {
+	if (!blob || n > SAVE_CAP) {
+		free(blob);
 		return;
 	}
 	if (g_saved_blob && n == g_saved_size && !memcmp(blob, g_saved_blob, n)) {

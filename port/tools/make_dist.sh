@@ -18,7 +18,9 @@ make -f Makefile.psp APP=game > /dev/null
 rm -rf "$OUT"
 mkdir -p "$OUT/save"
 cp EBOOT.PBP ICON0.PNG PIC1.PNG "$OUT/"   # the images also decorate the save data
-for f in "$GAME"/*.x "$GAME"/*.bmp "$GAME"/*.wav "$GAME"/replay_*.dat "$GAME"/gamedata.dat; do
+# Not gamedata.dat: it is the player's own save, and once the password has been
+# entered it is unlocked. Without it the game starts locked, as the original.
+for f in "$GAME"/*.x "$GAME"/*.bmp "$GAME"/*.wav "$GAME"/replay_*.dat; do
 	cp "$f" "$OUT/"
 done
 cp data/track_*.bin data/*.ogg data/unlock.dat "$OUT/"

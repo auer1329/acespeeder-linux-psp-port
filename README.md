@@ -217,8 +217,9 @@ screen.
 The PSP version uses the system's save data screens, like a commercial game:
 
 - When the game starts, it asks to **load** the save data. If there is none,
-  or you go back, the game starts from the `gamedata.dat` and replays that ship
-  with it.
+  or you go back, the game starts fresh, with the replays that ship with it and
+  locked like the original: enter the password on the Password screen to unlock
+  the extra courses and machines.
 - It asks to **save** after a change worth keeping: when you leave the Setting
   screen with changed settings, after the right password, at the end of a
   grand prix (cleared, game over or quit), and after a time attack race that set
@@ -227,7 +228,8 @@ The PSP version uses the system's save data screens, like a commercial game:
 Records, ranks, options, the unlock, `settings.txt` and the replays are kept
 together in one save, `PSP/SAVEDATA/ACESPEED00000`, which you can copy or
 delete from the PSP's Saved Data menu. The `save/` folder in the game folder
-only holds debug logs.
+only holds debug logs; `save/savedata.log` records the result of each load and
+save, which helps if saving fails on your console.
 
 **On PPSSPP**, copy the `AceSpeeder` folder into PPSSPP's `PSP/GAME` folder
 (for the Flatpak, `~/.var/app/org.ppsspp.PPSSPP/config/ppsspp/PSP/GAME/`), or

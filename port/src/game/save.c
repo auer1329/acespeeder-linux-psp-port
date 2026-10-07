@@ -1,6 +1,7 @@
 /* Settings/progress (0x418730..0x418d60). gamedata.dat is a text file of
  * printf("%lf\n") / printf("%d\n") values, written and read in a fixed order. */
 #include "save.h"
+#include "settings.h"
 
 #include <stddef.h>
 #include <string.h>
@@ -144,6 +145,54 @@ void Save_Write(const SaveData *s)
 	fprintf(f, "%d\n%d\n%d\n", s->opt2[0], s->opt2[1], s->opt2[2]);
 	fprintf(f, "%d\n%d\n%d\n", (int)s->code[0], (int)s->code[1], (int)s->code[2]);
 	fclose(f);
+}
+
+/* What the player would lose: records, ranks, options, the unlock, the port's
+ * settings and replays. The demo's machine and course (opt[0], opt[1]) change
+ * every time it plays and are kept only along with something else. */
+typedef struct {
+	double best_time[6][6], best_lap[6][6];
+	int16_t stage_rank[6], opt3, opt2[3], extra;
+	int32_t code[3];
+	Settings settings;
+} Kept;
+
+static Kept g_kept;
+static int g_replay_written;
+
+static void kept_get(Kept *k)
+{
+	memset(k, 0, sizeof(*k));
+	memcpy(k->best_time, g_save.best_time, sizeof(k->best_time));
+	memcpy(k->best_lap, g_save.best_lap, sizeof(k->best_lap));
+	memcpy(k->stage_rank, g_save.stage_rank, sizeof(k->stage_rank));
+	k->opt3 = g_save.opt[3];
+	memcpy(k->opt2, g_save.opt2, sizeof(k->opt2));
+	k->extra = g_save.extra;
+	memcpy(k->code, g_save.code, sizeof(k->code));
+	k->settings = g_settings;
+}
+
+void Save_MarkKept(void)
+{
+	kept_get(&g_kept);
+	g_replay_written = 0;
+}
+
+void Save_ReplayWritten(void)
+{
+	g_replay_written = 1;
+}
+
+void Save_Commit(void)
+{
+	Kept now;
+	kept_get(&now);
+	if (!g_replay_written && !memcmp(&now, &g_kept, sizeof(now))) {
+		return;
+	}
+	plat_save_commit();
+	Save_MarkKept();
 }
 
 void Save_CheckCode(SaveData *s, const int16_t c[8])

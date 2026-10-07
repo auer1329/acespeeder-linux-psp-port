@@ -35,6 +35,12 @@ void Save_Defaults(SaveData *s);                               /* 0x418730 */
 void Save_Reset(SaveData *s);                                  /* 0x418810 */
 void Save_Load(SaveData *s);                                   /* 0x418880 */
 void Save_Write(const SaveData *s);                            /* 0x418a10 */
+/* Port: store the save files on the card (asks on the PSP; see platform.h).
+ * Called where progress should be kept: settings, password, end of a grand
+ * prix or a time attack race. */
+void Save_Commit(void);
+void Save_MarkKept(void);       /* what is on the card now (after loading) */
+void Save_ReplayWritten(void);  /* a replay file changed: commit it */
 void Save_CheckCode(SaveData *s, const int16_t code[8]);       /* 0x418b70 */
 int Save_IsRecord(const SaveData *s, double value, int kind);  /* 0x418be0: kind 10 time, 20 lap, 30 rank */
 void Save_SetRecord(SaveData *s, double value, int kind);      /* 0x418c80 */

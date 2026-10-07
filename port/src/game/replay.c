@@ -1,4 +1,5 @@
 #include "replay.h"
+#include "save.h"
 
 #include <math.h>
 #include <stddef.h>
@@ -143,6 +144,7 @@ void Replay_Save(Replay *r, int stage, int course)
 		fprintf(f, "%d\n", r->data[i]);
 	}
 	fclose(f);
+	Save_ReplayWritten();
 }
 
 int Replay_Exists(int stage, int course)

@@ -43,6 +43,7 @@ void test_explosion_add(const Vec3 *p) { Explosion_Add(*p); }
 
 /* scene and music hooks of the race logic, logged for the differential tests */
 #include "../game/race.h"
+#include "../game/settings.h"
 int test_hook_log[256][2];
 float test_hook_arg[256];
 int test_hook_count;
@@ -62,3 +63,5 @@ void Doors_Close(float t) { log_hook(4, 0, t); }
 void Music_Play(int id) { log_hook(5, id, 0); }
 void Music_Stop(void) { log_hook(6, 0, 0); }
 FILE *plat_open_save(const char *name, const char *mode) { (void)name; (void)mode; return NULL; }
+void plat_save_commit(void) {}
+Settings g_settings;

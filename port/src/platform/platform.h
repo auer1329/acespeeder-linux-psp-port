@@ -21,6 +21,12 @@ void plat_screenshot(const char *path); /* binary PPM of the current back buffer
 /* Game data lives next to the executable (read-only); saves may live elsewhere. */
 FILE *plat_open_data(const char *name, const char *mode);
 FILE *plat_open_save(const char *name, const char *mode);
+/* The PSP keeps the save files in memory and stores them with the system's
+ * save data dialogs: plat_save_load asks to load them before the game starts,
+ * plat_save_commit asks to save them when they changed. No-ops on Linux,
+ * where plat_open_save writes files directly. */
+void plat_save_load(void);
+void plat_save_commit(void);
 
 /* ---- input: the original's 14-slot key array (see re/NOTES.md) ---- */
 enum {

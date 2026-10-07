@@ -30,7 +30,7 @@ CXXFLAGS = $(CFLAGS)
 ASFLAGS = $(CFLAGS)
 LIBDIR =
 LDFLAGS =
-LIBS = -lpspgum -lpspgu -lpspdmac -lpspaudiolib -lpspaudio -lpsppower -lpsprtc -lm
+LIBS = -lpspgum -lpspgu -lpspdmac -lpsputility -lpspaudiolib -lpspaudio -lpsppower -lpsprtc -lm
 
 EXTRA_TARGETS = EBOOT.PBP
 ifeq ($(APP),game)

@@ -232,10 +232,12 @@ int main(int argc, char **argv)
 	if (!check_data()) {
 		return 1;
 	}
+	plat_save_load();
 	Sound_LoadAll();
 	Save_Defaults(&g_save);
 	Save_Load(&g_save);
 	Settings_Load();
+	Save_MarkKept();
 	int start[4] = {0, 0, 0, -1};
 	FILE *f = plat_open_data("start.txt", "r");
 	if (f) {

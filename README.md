@@ -183,7 +183,7 @@ ACESPEEDER_DATA=data:../game build/acespeeder
 | Linux debug programs | `port/build/viewer`, `port/build/trackview` |
 | Library for the differential tests | `port/build/libgametest.so` |
 | Saves on Linux | `~/.local/share/acespeeder/` (or `$ACESPEEDER_SAVE`) |
-| Saves on the PSP | `PSP/GAME/AceSpeeder/save/` |
+| Saves on the PSP | `PSP/SAVEDATA/ACESPEED00000/` (system save data) |
 
 None of these are committed: they are built from your copy of the game.
 
@@ -212,8 +212,22 @@ files may also go in a `data` subfolder next to the EBOOT. If something is
 missing, the game shows a screen listing the missing files instead of a black
 screen.
 
-Saves, replays and `settings.txt` are written to `PSP/GAME/AceSpeeder/save/`.
-The `gamedata.dat` that ships with the game is used as the starting save.
+### Saving on the PSP
+
+The PSP version uses the system's save data screens, like a commercial game:
+
+- When the game starts, it asks to **load** the save data. If there is none,
+  or you go back, the game starts from the `gamedata.dat` and replays that ship
+  with it.
+- It asks to **save** after a change worth keeping: when you leave the Setting
+  screen with changed settings, after the right password, at the end of a
+  grand prix (cleared, game over or quit), and after a time attack race that set
+  a record or wrote a replay. If nothing changed, it does not ask.
+
+Records, ranks, options, the unlock, `settings.txt` and the replays are kept
+together in one save, `PSP/SAVEDATA/ACESPEED00000`, which you can copy or
+delete from the PSP's Saved Data menu. The `save/` folder in the game folder
+only holds debug logs.
 
 **On PPSSPP**, copy the `AceSpeeder` folder into PPSSPP's `PSP/GAME` folder
 (for the Flatpak, `~/.var/app/org.ppsspp.PPSSPP/config/ppsspp/PSP/GAME/`), or
@@ -238,7 +252,7 @@ logic, in building the frame and waiting for the GPU, and the frame rate.
 The Setting screen in the menu has a third row, **FOV**, which widens the race
 camera's field of view (Original, Wide, Wider, Widest; Wide by default). It is
 saved with the music and sound effect volumes in `settings.txt`, next to the
-saves:
+saves on Linux (inside the save data on the PSP):
 
 ```
 fov=1

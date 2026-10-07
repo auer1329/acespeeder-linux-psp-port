@@ -428,6 +428,7 @@ static void options_input(Menu *m, int i)
 		Sound_Play(7);
 		Save_Write(s);
 		Settings_Save();
+		Save_Commit();
 		m->cursor = 0;
 		go(m, i, SC_MODE, LS_DONE);
 	}
@@ -435,6 +436,7 @@ static void options_input(Menu *m, int i)
 		Sound_Play(7);
 		Save_Write(s);
 		Settings_Save();
+		Save_Commit();
 		m->cursor = 0;
 		go(m, i, SC_MODE, LS_BACK);
 	}
@@ -480,6 +482,7 @@ static void password_input(Menu *m, int i)
 			Save_CheckCode(&g_save, m->code);
 			if (g_save.extra == 1) {
 				Save_Write(&g_save);
+				Save_Commit();
 			}
 		}
 	}

@@ -126,6 +126,14 @@ FILE *plat_open_save(const char *name, const char *mode)
 	return f;
 }
 
+void plat_save_load(void)
+{
+}
+
+void plat_save_commit(void)
+{
+}
+
 /* -------------------------------------------------------------- lifecycle */
 
 static void audio_cb(void *ud, Uint8 *stream, int len)

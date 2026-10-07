@@ -5,11 +5,13 @@
 #include <pspctrl.h>
 #include <pspdisplay.h>
 #include <pspdmac.h>
+#include <psputility.h>
 #include <pspgu.h>
 #include <pspgum.h>
 #include <pspkernel.h>
 #include <psppower.h>
 #include <psprtc.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -58,9 +60,12 @@ static int callback_thread(SceSize args, void *argp)
 
 /* ------------------------------------------------------------------ files */
 
+/* Debug output (logs, screenshots) goes to a save/ folder next to the EBOOT.
+ * sceIoMkdir does not resolve relative paths on the console, newlib's mkdir
+ * does (through the working directory). */
 static void make_save_dir(void)
 {
-	sceIoMkdir("save", 0777);
+	mkdir("save", 0777);
 }
 
 /* The data sits next to EBOOT.PBP (the working directory), or in a data/
@@ -70,21 +75,70 @@ FILE *plat_open_data(const char *name, const char *mode)
 	FILE *f = fopen(name, mode);
 	if (!f) {
 		char p[256];
-		snprintf(p, sizeof(p), "data/%s", name);
+		snprintf(p, sizeof(p), "data/%.200s", name);
 		f = fopen(p, mode);
 	}
 	return f;
 }
 
+/* The game's save files (gamedata.dat, settings.txt, replays) live in memory
+ * and reach the Memory Stick through the system's save data dialogs (see
+ * plat_save_load and plat_save_commit at the end of this file). */
+#define SAVE_MAX_FILES 64
+
+typedef struct {
+	char name[32];
+	char *data;
+	size_t size;
+} SaveFile;
+
+static SaveFile g_save_files[SAVE_MAX_FILES];
+static int g_nsave_files;
+
+static SaveFile *save_file(const char *name, int create)
+{
+	for (int i = 0; i < g_nsave_files; i++) {
+		if (!strcmp(g_save_files[i].name, name)) {
+			return &g_save_files[i];
+		}
+	}
+	if (!create || g_nsave_files == SAVE_MAX_FILES || strlen(name) >= sizeof(g_save_files[0].name)) {
+		return NULL;
+	}
+	SaveFile *f = &g_save_files[g_nsave_files++];
+	memset(f, 0, sizeof(*f));
+	strcpy(f->name, name);
+	return f;
+}
+
+static int is_debug_file(const char *name)
+{
+	size_t n = strlen(name);
+	return n > 4 && !strcmp(name + n - 4, ".log");
+}
+
 FILE *plat_open_save(const char *name, const char *mode)
 {
-	char p[256];
-	snprintf(p, sizeof(p), "save/%s", name);
-	FILE *f = fopen(p, mode);
-	if (!f && mode[0] == 'r') {
-		f = plat_open_data(name, mode); /* shipped defaults (replays, gamedata.dat) */
+	if (is_debug_file(name)) {
+		char p[256];
+		snprintf(p, sizeof(p), "save/%.200s", name);
+		return fopen(p, mode);
 	}
-	return f;
+	if (mode[0] == 'r') {
+		SaveFile *f = save_file(name, 0);
+		if (f && f->size) {
+			return fmemopen(f->data, f->size, "r");
+		}
+		return plat_open_data(name, mode); /* shipped defaults (replays, gamedata.dat) */
+	}
+	SaveFile *f = save_file(name, 1);
+	if (!f) {
+		return NULL;
+	}
+	free(f->data);
+	f->data = NULL;
+	f->size = 0;
+	return open_memstream(&f->data, &f->size);
 }
 
 /* ------------------------------------------------------------------ audio */
@@ -797,4 +851,197 @@ void gfx_end_2d(void)
 	sceGuEnable(GU_DEPTH_TEST);
 	sceGuTexFilter(GU_LINEAR, GU_LINEAR);
 	sceGuTexWrap(GU_REPEAT, GU_REPEAT);
+}
+
+/* ------------------------------------------------------------- save data */
+
+/* All save files packed in one DATA.BIN: "ASSAVE01", count, then for each
+ * file its name length, name, size and contents. */
+static uint8_t *g_saved_blob;   /* as last loaded from or saved to the card */
+static size_t g_saved_size;
+
+static uint8_t *pack_saves(size_t *size)
+{
+	size_t n = 12;
+	for (int i = 0; i < g_nsave_files; i++) {
+		n += 1 + strlen(g_save_files[i].name) + 4 + g_save_files[i].size;
+	}
+	uint8_t *b = malloc(n), *p = b;
+	if (!b) {
+		return NULL;
+	}
+	memcpy(p, "ASSAVE01", 8), p += 8;
+	uint32_t count = (uint32_t)g_nsave_files;
+	memcpy(p, &count, 4), p += 4;
+	for (int i = 0; i < g_nsave_files; i++) {
+		const SaveFile *f = &g_save_files[i];
+		uint8_t len = (uint8_t)strlen(f->name);
+		uint32_t sz = (uint32_t)f->size;
+		*p++ = len;
+		memcpy(p, f->name, len), p += len;
+		memcpy(p, &sz, 4), p += 4;
+		if (sz) {
+			memcpy(p, f->data, sz), p += sz;
+		}
+	}
+	*size = n;
+	return b;
+}
+
+static int unpack_saves(const uint8_t *b, size_t n)
+{
+	if (n < 12 || memcmp(b, "ASSAVE01", 8)) {
+		return 0;
+	}
+	uint32_t count;
+	memcpy(&count, b + 8, 4);
+	size_t at = 12;
+	for (uint32_t i = 0; i < count; i++) {
+		if (at + 1 > n) {
+			return 0;
+		}
+		uint8_t len = b[at++];
+		char name[256];
+		uint32_t sz;
+		if (at + len + 4 > n) {
+			return 0;
+		}
+		memcpy(name, b + at, len), name[len] = 0, at += len;
+		memcpy(&sz, b + at, 4), at += 4;
+		if (at + sz > n) {
+			return 0;
+		}
+		SaveFile *f = save_file(name, 1);
+		if (f) {
+			free(f->data);
+			f->data = malloc(sz ? sz : 1);
+			if (f->data) {
+				memcpy(f->data, b + at, sz);
+			}
+			f->size = f->data ? sz : 0;
+		}
+		at += sz;
+	}
+	return 1;
+}
+
+static void *load_whole(const char *name, SceSize *size)
+{
+	FILE *f = plat_open_data(name, "rb");
+	void *buf = NULL;
+	*size = 0;
+	if (f) {
+		fseek(f, 0, SEEK_END);
+		long n = ftell(f);
+		fseek(f, 0, SEEK_SET);
+		if (n > 0 && (buf = malloc((size_t)n)) != NULL && fread(buf, 1, (size_t)n, f) == (size_t)n) {
+			*size = (SceSize)n;
+		}
+		fclose(f);
+	}
+	return buf;
+}
+
+/* Runs one save data dialog to its end, drawing a blank frame under it. */
+static int savedata_dialog(int mode, void *buf, SceSize bufsize, SceSize datasize)
+{
+	static SceUtilitySavedataParam p;
+	memset(&p, 0, sizeof(p));
+	p.base.size = sizeof(p);
+	sceUtilityGetSystemParamInt(PSP_SYSTEMPARAM_ID_INT_LANGUAGE, &p.base.language);
+	p.base.buttonSwap = PSP_UTILITY_ACCEPT_CROSS;
+	p.base.graphicsThread = 0x11;
+	p.base.accessThread = 0x13;
+	p.base.fontThread = 0x12;
+	p.base.soundThread = 0x10;
+	p.mode = mode;
+	p.overwrite = 1;
+	p.focus = PSP_UTILITY_SAVEDATA_FOCUS_LATEST;
+	strcpy(p.gameName, "ACESPEED0");
+	strcpy(p.saveName, "0000");
+	strcpy(p.fileName, "DATA.BIN");
+	p.dataBuf = buf;
+	p.dataBufSize = bufsize;
+	p.dataSize = datasize;
+	strcpy(p.sfoParam.title, "AceSpeeder!");
+	strcpy(p.sfoParam.savedataTitle, "Game data");
+	strcpy(p.sfoParam.detail, "Records, settings and replays");
+	p.sfoParam.parentalLevel = 1;
+	SceSize icon_size, pic_size;
+	void *icon = load_whole("ICON0.PNG", &icon_size), *pic = load_whole("PIC1.PNG", &pic_size);
+	if (icon) {
+		p.icon0FileData.buf = icon;
+		p.icon0FileData.bufSize = p.icon0FileData.size = icon_size;
+	}
+	if (pic) {
+		p.pic1FileData.buf = pic;
+		p.pic1FileData.bufSize = p.pic1FileData.size = pic_size;
+	}
+	int result = -1;
+	if (sceUtilitySavedataInitStart(&p) == 0) {
+		for (int running = 1; running && !g_quit;) {
+			sceGuStart(GU_DIRECT, g_list);
+			sceGuDrawBufferList(GU_PSM_5650, g_draw_buf, BUF_W);
+			sceGuScissor(0, 0, SCR_W, SCR_H);
+			sceGuClearColor(0xff000000);
+			sceGuClear(GU_COLOR_BUFFER_BIT);
+			sceGuFinish();
+			sceGuSync(0, 0);
+			switch (sceUtilitySavedataGetStatus()) {
+			case PSP_UTILITY_DIALOG_VISIBLE:
+				sceUtilitySavedataUpdate(1);
+				break;
+			case PSP_UTILITY_DIALOG_QUIT:
+				sceUtilitySavedataShutdownStart();
+				break;
+			case PSP_UTILITY_DIALOG_NONE:
+				running = 0;
+				break;
+			}
+			sceDisplayWaitVblankStart();
+			sceDisplaySetFrameBuf(vram_abs(g_draw_buf), BUF_W, PSP_DISPLAY_PIXEL_FORMAT_565, PSP_DISPLAY_SETBUF_NEXTFRAME);
+			g_draw_idx = (g_draw_idx + 1) % 3;
+			g_draw_buf = g_fb[g_draw_idx];
+		}
+		result = p.base.result;
+	}
+	free(icon);
+	free(pic);
+	return result;
+}
+
+void plat_save_load(void)
+{
+	SceSize cap = 4 * 1024 * 1024;
+	uint8_t *buf = malloc(cap);
+	if (!buf) {
+		return;
+	}
+	memset(buf, 0, 12);
+	if (savedata_dialog(PSP_UTILITY_SAVEDATA_LOAD, buf, cap, 0) == 0 && unpack_saves(buf, cap)) {
+		free(g_saved_blob);
+		g_saved_blob = pack_saves(&g_saved_size);
+	}
+	free(buf);
+}
+
+void plat_save_commit(void)
+{
+	size_t n;
+	uint8_t *blob = pack_saves(&n);
+	if (!blob) {
+		return;
+	}
+	if (g_saved_blob && n == g_saved_size && !memcmp(blob, g_saved_blob, n)) {
+		free(blob);
+		return; /* nothing changed since the last load or save */
+	}
+	if (savedata_dialog(PSP_UTILITY_SAVEDATA_SAVE, blob, (SceSize)n, (SceSize)n) == 0) {
+		free(g_saved_blob);
+		g_saved_blob = blob;
+		g_saved_size = n;
+	}
+	else {
+		free(blob);
+	}
 }

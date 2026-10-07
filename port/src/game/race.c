@@ -88,6 +88,11 @@ static void leave_race(Race *r, int lost_life)
 	else if (g_save.mode == MODE_TIMEATTACK || g_save.mode == MODE_REPLAY) {
 		g_gameState = GS_MENU;
 	}
+	/* port: keep the progress when a grand prix ends (cleared or game over)
+	 * or after a time attack race (records, replays) */
+	if (g_save.mode != MODE_REPLAY && g_gameState != GS_RACE) {
+		Save_Commit();
+	}
 }
 
 /* The failure phases share their flow: message in, wait for a key, then retry
@@ -528,6 +533,9 @@ void Race_Update(Race *r)
 			Sound_Stop(0);
 			Race_Cleanup(r);
 			g_gameState = GS_MENU;
+			if (g_save.mode != MODE_REPLAY) {
+				Save_Commit(); /* port: records of the courses already run */
+			}
 			return;
 		}
 		break;
@@ -560,6 +568,7 @@ void Race_Update(Race *r)
 				Music_Stop();
 				Race_Cleanup(r);
 				g_gameState = GS_MENU;
+				Save_Commit(); /* port */
 				return;
 			}
 			break;

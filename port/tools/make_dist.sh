@@ -17,7 +17,7 @@ make -f Makefile.psp APP=game > /dev/null
 
 rm -rf "$OUT"
 mkdir -p "$OUT/save"
-cp EBOOT.PBP "$OUT/"
+cp EBOOT.PBP ICON0.PNG PIC1.PNG "$OUT/"   # the images also decorate the save data
 for f in "$GAME"/*.x "$GAME"/*.bmp "$GAME"/*.wav "$GAME"/replay_*.dat "$GAME"/gamedata.dat; do
 	cp "$f" "$OUT/"
 done

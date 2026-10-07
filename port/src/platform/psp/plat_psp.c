@@ -963,6 +963,10 @@ static int savedata_dialog(int mode, void *buf, SceSize bufsize, SceSize datasiz
 	p.mode = mode;
 	p.overwrite = 1;
 	p.focus = PSP_UTILITY_SAVEDATA_FOCUS_LATEST;
+	/* A plain save. With the default 0 (or 2, 3) the firmware wants a 16-byte
+	 * game key and fails with a parameter error without one; PPSSPP does not
+	 * check it here, so this only showed on a console. */
+	p.secureVersion = 1;
 	strcpy(p.gameName, "ACESPEED0");
 	strcpy(p.saveName, "0000");
 	strcpy(p.fileName, "DATA.BIN");

@@ -1,6 +1,7 @@
 #include "gmath.h"
 
 #include <math.h>
+#include <stdint.h>
 
 /* Round p+e (the exact value, e the tiny remainder) to float with a single rounding:
  * (float)p alone can double-round when p lies exactly between two floats. */
@@ -17,27 +18,54 @@ static float round_exact(double p, double e)
 	return r;
 }
 
+/* Double rounding can only go wrong when the double result lies exactly
+ * halfway between two floats (low 29 mantissa bits 1000...0) or outside the
+ * normal float range; otherwise (float)p is already the single rounding of
+ * the exact value. Testing that first skips the exact path (fma and friends,
+ * slow in software on the PSP) in all but about one case in 2^29. */
+static int needs_exact(double p)
+{
+	union {
+		double d;
+		uint64_t u;
+	} b = {p};
+	double m = fabs(p);
+	return (b.u & 0x1fffffffu) == 0x10000000u || (m != 0.0 && m < 1.1754944e-38) || m > 3.4028235e38;
+}
+
 float x87_mul(float a, double c)
 {
 	double p = (double)a * c;
+	if (!needs_exact(p)) {
+		return (float)p;
+	}
 	return round_exact(p, fma((double)a, c, -p));
 }
 
 float x87_muld(double a, double c)
 {
 	double p = a * c;
+	if (!needs_exact(p)) {
+		return (float)p;
+	}
 	return round_exact(p, fma(a, c, -p));
 }
 
 float x87_div(double a, double c)
 {
 	double q = a / c;
+	if (!needs_exact(q)) {
+		return (float)q;
+	}
 	return round_exact(q, fma(-q, c, a) / c); /* the remainder breaks ties exactly */
 }
 
 float x87_add(double a, double c)
 {
 	double s = (double)a + c;
+	if (!needs_exact(s)) {
+		return (float)s;
+	}
 	double bb = s - (double)a; /* TwoSum: exact error of the addition */
 	double e = ((double)a - (s - bb)) + (c - bb);
 	return round_exact(s, e);

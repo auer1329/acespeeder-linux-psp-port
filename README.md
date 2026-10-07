@@ -298,9 +298,9 @@ Environment variables for debugging, all described at the top of
 |---|---|
 | `ACESPEEDER_DATA` | data folders, separated by `:` |
 | `ACESPEEDER_SAVE` | save folder |
-| `ACESPEEDER_SHOTS=t1,t2,...` | run one logic tick per frame, save `shot_<tick>.ppm` at those ticks, then quit (`shots.txt` on the PSP) |
-| `ACESPEEDER_KEYS=t:k,t1-t2:k,...` | scripted key presses (`u d l r a b`, `s` Start, `f` meter) |
-| `ACESPEEDER_RATE` | log ticks and frames per second (`rate.txt` on the PSP) |
+| `ACESPEEDER_SHOTS=t1,t2,...` | run one logic tick per frame, save `shot_<tick>.ppm` at those ticks, then quit (`shots.txt` on the PSP, which also skips the save data dialog) |
+| `ACESPEEDER_KEYS=t:k,t1-t2:k,...` | scripted key presses (`u d l r a b`, `s` Start, `f` meter, `1`–`4` views F1–F4; `keys.txt` on the PSP) |
+| `ACESPEEDER_RATE` | every 5 seconds, log ticks and frames per second and the milliseconds per frame spent in the player's and opponents' physics, the world (scenery, gates, sparks), building the 3D scene and the clipping inside it (`rate.txt` on the PSP, logged to `save/rate.log`) |
 | `ACESPEEDER_STATE` | start in another game state, e.g. `300` demo, `700` staff roll |
 | `ACESPEEDER_CLIP=<guard>` | run the PSP's software clipping on Linux, to test it |
 | `ACESPEEDER_SCALE` | window size multiplier |

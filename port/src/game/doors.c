@@ -67,6 +67,9 @@ void Doors_Render(RMViewport *view, RMFrame *scene, RMFrame *sun, Mat3 cam_rot)
 	if (!g_doors[0]) {
 		return;
 	}
+	/* port: the doors cover everything. Drawn last on a cleared depth buffer,
+	 * so scenery nearer than the door panels cannot show through them. */
+	gfx_clear(0, 0, 1);
 	Vec3 dir, up;
 	rm_frame_get_orientation(sun, scene, &dir, &up);
 	Mat3 m = Mat3_Mul(Mat3_Mul(Mat3_Rotate(2.14f, 0), Mat3_Rotate(3.84f, 1)), cam_rot);

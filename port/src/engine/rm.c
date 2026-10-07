@@ -1,4 +1,5 @@
 #include "rm.h"
+#include "prof.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -1039,7 +1040,14 @@ static void render_frame(RenderCtx *ctx, RMFrame *f, const Mat4 *parent_world, i
 	}
 }
 
+static void viewport_render(RMViewport *v, RMFrame *frame);
+
 void rm_viewport_render(RMViewport *v, RMFrame *frame)
+{
+	PROF(PROF_SCENE, viewport_render(v, frame));
+}
+
+static void viewport_render(RMViewport *v, RMFrame *frame)
 {
 	if (!v->camera || !frame) {
 		return;

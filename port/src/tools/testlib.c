@@ -64,4 +64,5 @@ void Music_Play(int id) { log_hook(5, id, 0); }
 void Music_Stop(void) { log_hook(6, 0, 0); }
 FILE *plat_open_save(const char *name, const char *mode) { (void)name; (void)mode; return NULL; }
 void plat_save_commit(void) {}
+uint32_t plat_time_us(void) { return 0; }
 Settings g_settings;

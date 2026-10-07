@@ -3,11 +3,14 @@
  * in the tail that updates the effects and advances the phase clocks. */
 #include <math.h>
 
+#include "../engine/prof.h"
 #include "camera.h"
 #include "effects.h"
 #include "hud.h"
 #include "machine.h"
 #include "race.h"
+
+#include "../engine/prof.h"
 #include "replay.h"
 #include "save.h"
 #include "track.h"
@@ -37,8 +40,7 @@ static void set_phase(Race *r, int phase)
 static void update_machines(void)
 {
 	for (int i = 0; i < NUM_MACHINES; i++) {
-		Machine_Update(&g_machines[i]);
-		Machine_UpdatePose(&g_machines[i]);
+		PROF(i == 0 ? PROF_PLAYER : PROF_AI, Machine_Update(&g_machines[i]); Machine_UpdatePose(&g_machines[i]));
 	}
 }
 
@@ -575,11 +577,8 @@ void Race_Update(Race *r)
 		}
 		break;
 	}
-	Sparks_Update();
-	Scenery_Update();
-	if (g_save.stage >= 0 && g_save.stage <= 5 && g_save.course >= 0 && g_save.course <= 5) {
-		Gates_Update();
-	}
+	PROF(PROF_WORLD, Sparks_Update(); Scenery_Update();
+	     if (g_save.stage >= 0 && g_save.stage <= 5 && g_save.course >= 0 && g_save.course <= 5) { Gates_Update(); });
 	g_phaseTime = x87_add(g_phaseTime, 1.65);
 	r->sub_time = x87_add(r->sub_time, 1.65);
 }

@@ -9,7 +9,8 @@
  * Debugging: ACESPEEDER_SHOTS="t1,t2,..." (or the same list in a file shots.txt
  * in the data folder, for the PSP) runs one logic tick per frame without waiting,
  * saves shot_<tick>.ppm at those ticks and quits after the last. ACESPEEDER_KEYS=
- * "t:k,t1-t2:k,..." presses key k (u d l r a b, s START, f meter) during tick t or ticks t1..t2. ACESPEEDER_RATE (or a file
+ * "t:k,t1-t2:k,..." presses key k (u d l r a b, s START, f meter, 1-4 views F1-F4; keys.txt on
+ * the PSP) during tick t or ticks t1..t2. ACESPEEDER_RATE (or a file
  * rate.txt) logs ticks and frames per second to stderr or rate.log. ACESPEEDER_STATE
  * starts in another game state, e.g. 700 for the staff roll.
  *
@@ -22,6 +23,7 @@
 #include <string.h>
 
 #include "engine/font.h"
+#include "engine/prof.h"
 #include "engine/rm.h"
 #include "game/machine.h"
 #include "game/race.h"
@@ -60,6 +62,9 @@ static void scripted_keys(void)
 			}
 			else if (c[1] == 's' || c[1] == 'f') {
 				g_input[extra_keys[c[1] == 'f']] = 1;
+			}
+			else if (c[1] >= '1' && c[1] <= '4') {
+				g_input[IN_F1 + c[1] - '1'] = 1;
 			}
 		}
 		p = strchr(p, ',');
@@ -232,7 +237,13 @@ int main(int argc, char **argv)
 	if (!check_data()) {
 		return 1;
 	}
-	plat_save_load();
+	FILE *shots_file = plat_open_data("shots.txt", "r");
+	if (shots_file) {
+		fclose(shots_file); /* unattended debug run: no dialog waiting for a button */
+	}
+	else {
+		plat_save_load();
+	}
 	Sound_LoadAll();
 	Save_Defaults(&g_save);
 	Save_Load(&g_save);
@@ -279,6 +290,16 @@ int main(int argc, char **argv)
 	}
 
 	g_keys = getenv("ACESPEEDER_KEYS");
+	if (!g_keys) { /* the same list in a file keys.txt, for the PSP */
+		static char keys_buf[1024];
+		FILE *kf = plat_open_data("keys.txt", "r");
+		if (kf) {
+			size_t n = fread(keys_buf, 1, sizeof(keys_buf) - 1, kf);
+			keys_buf[n] = 0;
+			fclose(kf);
+			g_keys = keys_buf;
+		}
+	}
 	char list[256] = "";
 	const char *shots = getenv("ACESPEEDER_SHOTS");
 	FILE *sf = shots ? NULL : plat_open_data("shots.txt", "r");
@@ -326,6 +347,7 @@ int main(int argc, char **argv)
 	if (rate_file) {
 		fclose(rate_file);
 	}
+	g_prof_on = show_rate;
 	while (!plat_should_quit() && g_gameState != GS_QUIT) {
 		uint32_t now = plat_ticks_ms();
 		if (now < last) {
@@ -363,7 +385,10 @@ int main(int argc, char **argv)
 		rate_frames++;
 		if (show_rate && plat_ticks_ms() - rate_start >= 5000) {
 			FILE *out = plat_open_save("rate.log", "a");
-			fprintf(out ? out : stderr, "%.1f ticks/s, %.1f frames/s\n", rate_ticks / 5.0, rate_frames / 5.0);
+			char prof[160];
+			prof_report(prof, sizeof(prof), rate_frames);
+			fprintf(out ? out : stderr, "%.1f ticks/s, %.1f frames/s, ms per frame: %s\n", rate_ticks / 5.0,
+			        rate_frames / 5.0, prof);
 			if (out) {
 				fclose(out);
 			}

@@ -325,19 +325,38 @@ int Fx_SparkCount(void)
 	return nsparks;
 }
 
-/* Explosion smoke: growing, fading camera-facing puffs (approximation of 0x41e7d0). */
+/* Explosion smoke: growing, fading camera-facing puffs (0x41e7d0).
+ * Like the original, the puffs are drawn from the farthest to the nearest: they
+ * write depth over their whole square, so a far puff drawn after a near one
+ * would be cut out by the near one's square. */
 void Fx_PrepareSmoke(Mat3 cam, Vec3 campos)
 {
-	(void)campos;
-	nsmoke = 0;
+	Vec3 fwd = Mat3_MulVec(v3(0.0f, 0.0f, 1.0f), cam);
+	int order[50];
+	float depth[50];
+	int n = 0;
 	for (int i = 0; i < 50; i++) {
 		if (!g_explosion.active[i]) {
 			continue;
 		}
-		float t = g_explosion.life[i] / 40.0f;
-		int c = (int)((1.0f - t) * 255.0f);
-		float s = 20.0f + t * 60.0f;
-		billboard(smoke[nsmoke++], g_explosion.pos[i], cam, s, s, grey(c < 0 ? 0 : c, 0x80));
+		Vec3 d = v3(g_explosion.pos[i].x - campos.x, g_explosion.pos[i].y - campos.y, g_explosion.pos[i].z - campos.z);
+		depth[i] = d.x * fwd.x + d.y * fwd.y + d.z * fwd.z;
+		int k = n++;
+		for (; k > 0 && depth[order[k - 1]] < depth[i]; k--) {
+			order[k] = order[k - 1];
+		}
+		order[k] = i;
+	}
+	nsmoke = 0;
+	for (int j = 0; j < n; j++) {
+		int i = order[j];
+		/* 0x41e835: f = 1 - life/40, colour (0x80, 180f^2, 180f^2, 180f),
+		 * half size 5 + 1.25 life */
+		double life = g_explosion.life[i];
+		double f = 1.0 - life * 0.025;
+		uint32_t rg = (uint32_t)(int)(f * f * 180.0) & 0xff, b = (uint32_t)(int)(f * 180.0) & 0xff;
+		float h = (float)(life * 1.25 + 5.0);
+		billboard(smoke[nsmoke++], g_explosion.pos[i], cam, h, h, abgr(0x80000000u | rg << 16 | rg << 8 | b));
 	}
 }
 

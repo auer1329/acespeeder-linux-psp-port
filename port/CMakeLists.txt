@@ -11,7 +11,7 @@ find_package(OpenGL REQUIRED)
 
 set(ENGINE_SRC
   src/engine/rmath.c
-  src/engine/xfile.c src/engine/font.c src/engine/sprite.c
+  src/engine/xfile.c src/engine/font.c src/engine/sprite.c src/engine/prof.c
   src/engine/image.c
   src/engine/rm.c
   src/platform/mixer.c
@@ -35,7 +35,7 @@ target_link_libraries(game PUBLIC engine)
 target_compile_options(game PRIVATE ${GAME_FLAGS})
 
 # Game logic as a shared library for the differential tests in re/scripts.
-add_library(gametest SHARED ${GAME_SRC} src/tools/testlib.c src/engine/rmath.c)
+add_library(gametest SHARED ${GAME_SRC} src/tools/testlib.c src/engine/rmath.c src/engine/prof.c)
 target_compile_options(gametest PRIVATE ${GAME_FLAGS} -DGAME_TESTLIB)
 target_link_libraries(gametest PRIVATE m)
 

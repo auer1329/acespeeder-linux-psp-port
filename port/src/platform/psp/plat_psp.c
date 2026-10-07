@@ -16,6 +16,7 @@
 #include <string.h>
 #include <sys/stat.h>
 
+#include "../../engine/prof.h"
 #include "../clip.h"
 #include "../mixer.h"
 #include "../platform.h"
@@ -426,8 +427,18 @@ void gfx_clear(uint32_t rgb, int color, int depth)
 static float g_mv[4][4];
 static float g_fx = 1.0f, g_fy = 1.0f, g_near = 1.0f, g_far = 1000.0f;
 
+/* The game's near plane is 1 with the far plane at 20000. The PSP's 16-bit
+ * depth buffer then cannot separate surfaces a unit or so apart a few hundred
+ * units away, and track pieces overlapping at junctions show through each
+ * other. Nothing is drawn closer than about 8 units from the camera (measured
+ * in replays and the chase views), so 8 gives 8 times the depth precision. */
+#define MIN_NEAR 8.0f
+
 void gfx_set_projection(float fx, float fy, float n, float f)
 {
+	if (n < MIN_NEAR) {
+		n = MIN_NEAR;
+	}
 	g_fx = fx, g_fy = fy, g_near = n, g_far = f;
 	ScePspFMatrix4 m;
 	memset(&m, 0, sizeof(m));
@@ -751,7 +762,8 @@ static void draw_clipped(const GfxVertex *v, int count, int persistent, const fl
 		return;
 	}
 	const GfxVertex *clipped;
-	int n = clip_triangles(v, count, &clipped);
+	int n;
+	PROF(PROF_CLIP, n = clip_triangles(v, count, &clipped));
 	if (n <= 0) {
 		return;
 	}

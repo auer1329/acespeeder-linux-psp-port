@@ -234,11 +234,23 @@ def annotate(text):
     return CALL0.sub(lambda m: f"{m.group(0)}/*QueryInterface*/", text)
 
 
+def redact(text):
+    """Hide the game's password and the values that record it in the save: the
+    author asked that the password is never published. Done by structure, so
+    the values themselves appear nowhere in this repository."""
+    if "Save_CheckCode(" in text:
+        text = re.sub(r"(==\s*)(0x[0-9a-fA-F]+|\d+)", r"\1CODE", text)
+        text = re.sub(r"(\+ 0x2d[48c]\) = )(0x[0-9a-fA-F]+|\d+)", r"\1UNLOCK", text)
+    if "Save_Load(" in text:
+        text = re.sub(r"(\+ 0x16[ace]\) == )(0x[0-9a-fA-F]+|\d+)", r"\1UNLOCK", text)
+    return text
+
+
 def main():
     src, dst = Path(sys.argv[1]), Path(sys.argv[2])
     dst.mkdir(parents=True, exist_ok=True)
     for f in src.glob("*.c"):
-        (dst / f.name).write_text(annotate(f.read_text()))
+        (dst / f.name).write_text(redact(annotate(f.read_text())))
     idx = src / "INDEX.txt"
     if idx.exists():
         (dst / "INDEX.txt").write_text(idx.read_text())

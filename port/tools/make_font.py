@@ -39,7 +39,10 @@ def exe_chars(path):
 
 def strings_chars(data):
     chars = set()
-    for m in re.finditer(rb"(?<=\0)(?:[\x20-\x7e]|[\x81-\x9f\xe0-\xfc][\x40-\xfc]){2,}(?=\0)", data):
+    # a single character counts only when double-byte (the password letters Ａ..Ｆ
+    # and the cursor ￣ are stored one per string)
+    for m in re.finditer(rb"(?<=\0)(?:(?:[\x20-\x7e]|[\x81-\x9f\xe0-\xfc][\x40-\xfc]){2,}"
+                         rb"|[\x81-\x9f\xe0-\xfc][\x40-\xfc])(?=\0)", data):
         try:
             s = m.group().decode("cp932")
         except UnicodeDecodeError:

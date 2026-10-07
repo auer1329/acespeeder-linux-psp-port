@@ -129,7 +129,9 @@ tools/make_dist.sh
 
 1. extracts the 36 courses from the executable into `data/track_*.bin`
    (`re/scripts/extract_tracks.py`, only if they are missing);
-2. renders the 8 MIDI songs to `data/*.ogg` (`tools/midi2ogg.sh`, only if missing);
+2. renders the 8 MIDI songs to `data/*.ogg` (`tools/midi2ogg.sh`, only if missing),
+   and reads the password check into `data/unlock.dat` (`tools/extract_unlock.py`,
+   see [The password](#the-password));
 3. makes the menu icon and background `ICON0.PNG` and `PIC1.PNG` from the game's
    own bitmaps (`tools/make_icons.py`);
 4. builds `EBOOT.PBP` with `Makefile.psp`;
@@ -142,6 +144,7 @@ tools/make_dist.sh
 cd port
 ../re/.venv/bin/python ../re/scripts/extract_tracks.py   # data/track_*.bin
 tools/midi2ogg.sh ../game data                        # data/*.ogg
+python3 tools/extract_unlock.py                       # data/unlock.dat
 python3 tools/make_icons.py ../game .                 # ICON0.PNG, PIC1.PNG
 make -f Makefile.psp                                  # EBOOT.PBP
 ```
@@ -155,6 +158,7 @@ instead of the game. `make -f Makefile.psp clean` removes the build files.
 cd port
 ../re/.venv/bin/python ../re/scripts/extract_tracks.py   # if data/ is empty
 tools/midi2ogg.sh ../game data                        # optional: music
+python3 tools/extract_unlock.py                       # for the Password screen
 cmake -S . -B build
 cmake --build build
 ```
@@ -171,6 +175,7 @@ ACESPEEDER_DATA=data:../game build/acespeeder
 |---|---|
 | Extracted courses | `port/data/track_<stage>_<course>.bin` |
 | Pre-rendered music | `port/data/*.ogg` |
+| Password check | `port/data/unlock.dat` |
 | PSP executable | `port/EBOOT.PBP` (and the intermediate `port/game.elf`, `port/PARAM.SFO`) |
 | PSP menu images | `port/ICON0.PNG`, `port/PIC1.PNG` |
 | **Packaged PSP game** | **`port/dist/PSP/GAME/AceSpeeder/`** |
@@ -242,6 +247,15 @@ sfx=60
 ```
 
 The volumes are percentages (0–200) and can be edited by hand.
+
+### The password
+
+As in the original, the extra stages and machines are unlocked by entering a
+password in **Password** on the main menu; the author gives it out (see the
+game's manual). The author asked that the password is never published, so it is
+not in this repository: `tools/extract_unlock.py` reads the check from your own
+`AceSpeeder.exe` into `data/unlock.dat` at build time. Without that file no
+password is accepted. Please do not commit or share `unlock.dat`.
 
 ### Differences from the original
 

@@ -9,6 +9,7 @@ OUT=dist/PSP/GAME/AceSpeeder
 
 [ -f data/track_1_1.bin ] || ../re/.venv/bin/python ../re/scripts/extract_tracks.py
 ls data/*.ogg > /dev/null 2>&1 || tools/midi2ogg.sh "$GAME" data
+[ -f data/unlock.dat ] || python3 tools/extract_unlock.py "$GAME/AceSpeeder.exe" data/unlock.dat
 python3 tools/make_icons.py "$GAME" .
 rm -f EBOOT.PBP PARAM.SFO
 make -f Makefile.psp clean > /dev/null
@@ -20,5 +21,5 @@ cp EBOOT.PBP "$OUT/"
 for f in "$GAME"/*.x "$GAME"/*.bmp "$GAME"/*.wav "$GAME"/replay_*.dat "$GAME"/gamedata.dat; do
 	cp "$f" "$OUT/"
 done
-cp data/track_*.bin data/*.ogg "$OUT/"
+cp data/track_*.bin data/*.ogg data/unlock.dat "$OUT/"
 echo "$OUT: $(ls "$OUT" | wc -l) files, $(du -sh "$OUT" | cut -f1)"

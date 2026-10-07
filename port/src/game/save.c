@@ -18,7 +18,36 @@ _Static_assert(offsetof(SaveData, extra) == 0x2e0, "SaveData layout");
 
 SaveData g_save;
 
-static const int32_t k_unlock[3] = {0x0, 0x0, 0x0};
+/* The password and the values that record it in gamedata.dat are read from
+ * the player's own AceSpeeder.exe at build time (port/tools/extract_unlock.py),
+ * because the author asked that the password is never published. Without
+ * unlock.dat no code is accepted and no save counts as unlocked. */
+static struct {
+	int loaded;           /* 1 loaded, -1 missing */
+	uint8_t code[8];      /* letters 0..5 */
+	int32_t unlock[3];
+} g_unlock;
+
+static int unlock_data(void)
+{
+	if (g_unlock.loaded == 0) {
+		uint8_t b[20];
+		FILE *f = plat_open_data("unlock.dat", "rb");
+		g_unlock.loaded = -1;
+		if (f) {
+			if (fread(b, 1, sizeof(b), f) == sizeof(b)) {
+				memcpy(g_unlock.code, b, 8);
+				for (int i = 0; i < 3; i++) {
+					g_unlock.unlock[i] = (int32_t)((uint32_t)b[8 + 4 * i] | (uint32_t)b[9 + 4 * i] << 8 |
+					                               (uint32_t)b[10 + 4 * i] << 16 | (uint32_t)b[11 + 4 * i] << 24);
+				}
+				g_unlock.loaded = 1;
+			}
+			fclose(f);
+		}
+	}
+	return g_unlock.loaded == 1;
+}
 
 void Save_Defaults(SaveData *s)
 {
@@ -91,7 +120,8 @@ void Save_Load(SaveData *s)
 	for (size_t i = 0; i < sizeof(opts) / sizeof(opts[0]); i++) {
 		read_int_into(f, s, opts[i]);
 	}
-	s->extra = (s->code[0] == k_unlock[0] && s->code[1] == k_unlock[1] && s->code[2] == k_unlock[2]) ? 1 : 0;
+	s->extra = unlock_data() && s->code[0] == g_unlock.unlock[0] && s->code[1] == g_unlock.unlock[1] &&
+	                   s->code[2] == g_unlock.unlock[2];
 	fclose(f);
 }
 
@@ -118,10 +148,16 @@ void Save_Write(const SaveData *s)
 
 void Save_CheckCode(SaveData *s, const int16_t c[8])
 {
-	if (c[0] == 0 && c[1] == 0 && c[2] == 0 && c[3] == 0 && c[4] == 0 && c[5] == 0 && c[6] == 0 && c[7] == 0) {
-		s->extra = 1;
-		memcpy(s->code, k_unlock, sizeof(k_unlock));
+	if (!unlock_data()) {
+		return;
 	}
+	for (int i = 0; i < 8; i++) {
+		if (c[i] != g_unlock.code[i]) {
+			return;
+		}
+	}
+	s->extra = 1;
+	memcpy(s->code, g_unlock.unlock, sizeof(g_unlock.unlock));
 }
 
 int Save_IsRecord(const SaveData *s, double value, int kind)

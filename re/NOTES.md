@@ -2,7 +2,7 @@
 
 Binary: `game/AceSpeeder.exe` (MSVC 6, i386, 2000-07-12). Game code is 0x401000–0x43da00;
 everything from 0x43ed6c up is the MSVC runtime. Pipeline: `re/run.sh` (see scripts/).
-Names live in `re/names.txt`; annotated decompilation in `re/decomp/`.
+Names live in `re/names.txt`; annotated decompilation in `re/decomp/` (made by `re/run.sh`, not in git).
 
 ## Platform APIs
 * Direct3D Retained Mode through **IDirect3DRM2** (`g_RM2_main`), the author's `direct3z.cpp` wrapper ("D3Z").

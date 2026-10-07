@@ -10,6 +10,7 @@ port/data/
 re/.venv/
 re/ghidra_project/
 re/decomp_raw/
+re/decomp/
 re/ghidra_headless.log
 __pycache__/
 port/dist/

@@ -6,6 +6,10 @@
 #include "font_data.h"
 
 #define ATLAS_W 512
+/* Transparent gap around each glyph. The PSP shrinks the atlas with a box
+ * filter and samples it linearly, which without it blends the bottom of the
+ * glyph above into the top of a letter (a line over it). */
+#define PAD 8
 
 static int tex = -1;
 static int atlas_h;
@@ -13,17 +17,17 @@ static short glyph_x[FONT_NGLYPHS], glyph_y[FONT_NGLYPHS];
 
 void font_init(void)
 {
-	int x = 0, y = 0;
+	int x = PAD, y = PAD;
 	for (int i = 0; i < FONT_NGLYPHS; i++) {
-		if (x + font_glyphs[i].w > ATLAS_W) {
-			x = 0;
-			y += FONT_CELL;
+		if (x + font_glyphs[i].w + PAD > ATLAS_W) {
+			x = PAD;
+			y += FONT_CELL + PAD;
 		}
 		glyph_x[i] = (short)x, glyph_y[i] = (short)y;
-		x += font_glyphs[i].w;
+		x += font_glyphs[i].w + PAD;
 	}
 	atlas_h = 1;
-	while (atlas_h < y + FONT_CELL) {
+	while (atlas_h < y + FONT_CELL + PAD) {
 		atlas_h *= 2;
 	}
 	uint32_t *px = calloc((size_t)ATLAS_W * atlas_h, 4);

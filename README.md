@@ -50,7 +50,7 @@ AceSpeeder/
 └── re/                     reverse engineering
     ├── NOTES.md            findings: structures, file formats, game states, quirks
     ├── names.txt           names given to the executable's functions and globals
-    ├── decomp/             annotated decompilation of every function
+    ├── decomp/             annotated decompilation, made by run.sh (not in git)
     ├── scripts/            Ghidra scripts, emulator, data extractors, differential tests
     └── run.sh              rebuilds the Ghidra project and decomp/ from scratch
 ```
@@ -59,7 +59,7 @@ AceSpeeder/
 
 Each file corresponds to a part of the original; the comments name the
 original functions by address (e.g. `Race_Update (0x411530)`), so the code can
-be compared with `re/decomp/`.
+be compared with the decompilation that `re/run.sh` writes to `re/decomp/`.
 
 | File | What it is |
 |---|---|
@@ -329,7 +329,8 @@ re/.venv/bin/python re/scripts/difftest_raceupdate.py
 ### Reverse engineering
 
 `re/run.sh` rebuilds the Ghidra project and the annotated decompilation in
-`re/decomp/` from the executable. It needs Ghidra
+`re/decomp/` from the executable. The decompilation is not in git (it is the
+author's code, recovered); run the script on your copy of the game to get it. It needs Ghidra
 (`GHIDRA=~/ghidra_12.1.4_PUBLIC` by default) and applies the scripts and name
 lists in `re/`. The findings are written up in `re/NOTES.md`.
 

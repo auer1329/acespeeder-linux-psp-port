@@ -16,3 +16,5 @@ __pycache__/
 port/dist/
 port/ICON0.PNG
 port/PIC1.PNG
+# the original game (not redistributable): put your own copy in game/
+/game/

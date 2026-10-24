@@ -11,7 +11,7 @@ find_package(OpenGL REQUIRED)
 
 set(ENGINE_SRC
   src/engine/rmath.c
-  src/engine/xfile.c src/engine/font.c src/engine/sprite.c src/engine/prof.c
+  src/engine/xfile.c src/engine/font.c src/engine/lang.c src/engine/sprite.c src/engine/prof.c
   src/engine/image.c
   src/engine/rm.c
   src/platform/mixer.c
